@@ -1,0 +1,4 @@
+interface:
+  display_name: "Keystone Recall"
+  short_description: "Find relevant knowledge and restore task context"
+  default_prompt: "Use $keystone-recall to find the relevant prior work and context for this task."

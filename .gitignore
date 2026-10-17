@@ -1,0 +1,34 @@
+# Private runtime data must stay out of the portable toolkit repository.
+/data/
+/private-data/
+/backups/
+/exports/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+*.zip
+*.tar
+*.tar.gz
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.DS_Store
+# Obsidian personal settings are private; the example vault needs no plugins.
+**/.obsidian/*
+!/seed-vault/.obsidian/core-plugins.json
+!/seed-vault/.obsidian/templates.json
+
+# Workspace-specific assistant connections contain machine-local paths.
+/.agents/
+/.claude/
+/.codex/
+/.mcp.json

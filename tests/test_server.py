@@ -1,0 +1,127 @@
+import http.client
+import json
+import shutil
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+
+from keystone import core
+from keystone.server import KeystoneServer
+
+
+class ServerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.data = Path(self.temp.name) / "data"
+        core.initialize(self.data, "Owner")
+        for child in core.vault_path(self.data).iterdir():
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+        self.document = core.save_document(self.data, {"id": "approved", "title": "Approved note", "body": "Safe instructions", "status": "verified"})
+        core.save_document(self.data, {"id": "draft", "title": "Unreviewed note", "body": "Unreviewed details"})
+        self.server = KeystoneServer(("127.0.0.1", 0), self.data)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.addCleanup(self.stop_server)
+        self.port = self.server.server_address[1]
+
+    def stop_server(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+
+    def request(self, method="GET", path="/api/bootstrap", payload=None, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        self.addCleanup(connection.close)
+        request_headers = dict(headers or {})
+        body = None
+        if payload is not None:
+            body = json.dumps(payload)
+            request_headers.setdefault("Content-Type", "application/json")
+        connection.request(method, path, body, request_headers)
+        response = connection.getresponse()
+        data = response.read()
+        try:
+            content = json.loads(data)
+        except json.JSONDecodeError:
+            content = data
+        return response.status, dict(response.getheaders()), content
+
+    def token(self, role):
+        return core.issue_token(self.data, role, role.title())
+
+    def test_local_owner_is_constrained_by_host_and_origin(self):
+        status, _, content = self.request()
+        self.assertEqual(status, 200)
+        self.assertEqual(content["session"]["role"], "owner")
+        self.assertEqual(len(content["documents"]), 2)
+        self.assertNotIn("tokens", content["settings"])
+        self.assertEqual(self.request(headers={"Host": "attacker.example"})[0], 403)
+        self.assertEqual(self.request(headers={"Origin": "https://attacker.example"})[0], 403)
+
+    def test_reader_cannot_access_drafts_or_write_or_export(self):
+        headers = {"Authorization": "Bearer " + self.token("reader")}
+        status, _, content = self.request(headers=headers)
+        self.assertEqual(status, 200)
+        self.assertEqual([item["id"] for item in content["documents"]], ["approved"])
+        self.assertEqual(content["settings"], {})
+        self.assertEqual(self.request(path="/api/documents/draft", headers=headers)[0], 404)
+        for path in ["/api/documents", "/api/settings", "/api/backups"]:
+            self.assertEqual(self.request("POST", path, {}, headers)[0], 403)
+        self.assertEqual(self.request(path="/api/export", headers=headers)[0], 403)
+
+    def test_author_can_draft_but_cannot_verify(self):
+        headers = {"Authorization": "Bearer " + self.token("author")}
+        payload = {"title": "Author contribution", "body": "A useful technique", "status": "draft"}
+        status, _, content = self.request("POST", "/api/documents", payload, headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(content["document"]["author"], "Author")
+        self.assertEqual(self.request("POST", "/api/documents", dict(payload, status="verified"), headers)[0], 403)
+
+    def test_mutations_require_json_and_same_origin(self):
+        self.assertEqual(self.request("POST", "/api/documents", {"title": "No"}, {"Content-Type": "text/plain"})[0], 415)
+        self.assertEqual(self.request("POST", "/api/documents", {"title": "No"}, {"Origin": "https://attacker.example"})[0], 403)
+        self.assertEqual(self.request("POST", "/api/documents", {"title": "No"}, {"Sec-Fetch-Site": "cross-site"})[0], 403)
+
+    def test_login_cookie_logout_and_invalid_token_never_fall_back_to_owner(self):
+        token = self.token("reader")
+        status, headers, _ = self.request("POST", "/api/login", {"token": token})
+        self.assertEqual(status, 200)
+        cookie = headers["Set-Cookie"]
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("SameSite=Strict", cookie)
+        session_cookie = cookie.split(";")[0]
+        self.assertEqual(self.request(headers={"Cookie": session_cookie})[2]["session"]["role"], "reader")
+        status, headers, _ = self.request("POST", "/api/logout", {}, {"Cookie": session_cookie})
+        self.assertEqual(status, 200)
+        logged_out = headers["Set-Cookie"].split(";")[0]
+        self.assertEqual(self.request(headers={"Cookie": logged_out})[2]["session"]["role"], "anonymous")
+        self.assertEqual(self.request(headers={"Authorization": "Bearer invalid"})[2]["session"]["role"], "anonymous")
+        self.assertEqual(self.request(headers={"Cookie": session_cookie})[2]["session"]["role"], "anonymous")
+
+    def test_network_bind_requires_explicit_allowed_host(self):
+        with self.assertRaises(core.KeystoneError):
+            KeystoneServer(("0.0.0.0", 0), self.data)
+
+    def test_require_auth_disables_local_owner_for_reverse_proxy(self):
+        self.server.local_owner = False
+        status, _, content = self.request()
+        self.assertEqual(status, 200)
+        self.assertEqual(content["session"]["role"], "anonymous")
+        self.assertEqual(content["documents"], [])
+        self.assertEqual(self.request("POST", "/api/documents", {"title": "Denied"})[0], 401)
+
+    def test_revision_conflict_and_traversal(self):
+        payload = dict(self.document, body="New content")
+        self.assertEqual(self.request("POST", "/api/documents", payload)[0], 200)
+        self.assertEqual(self.request("POST", "/api/documents", payload)[0], 409)
+        for path in ["/../keystone/core.py", "/%2e%2e/keystone/core.py", "/.git/config"]:
+            self.assertIn(self.request(path=path)[0], {400, 404})
+
+
+if __name__ == "__main__":
+    unittest.main()

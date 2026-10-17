@@ -1,0 +1,33 @@
+{
+  "id": "first-capture",
+  "title": "First documented engineering task",
+  "description": "Example plan: review evidence, capture a draft, and verify the result. Planning does not execute these actions.",
+  "status": "draft",
+  "steps": [
+    {
+      "id": "review-evidence",
+      "title": "Build an evidence map",
+      "document_id": "example-evidence-review",
+      "depends_on": [],
+      "requires_approval": false
+    },
+    {
+      "id": "capture-draft",
+      "title": "Prepare and save the documentation draft",
+      "document_id": "example-first-capture",
+      "depends_on": [
+        "review-evidence"
+      ],
+      "requires_approval": false
+    },
+    {
+      "id": "verify-document",
+      "title": "Verify content and record practical checks",
+      "document_id": "example-verify-capture",
+      "depends_on": [
+        "capture-draft"
+      ],
+      "requires_approval": true
+    }
+  ]
+}
