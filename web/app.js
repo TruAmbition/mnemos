@@ -168,7 +168,9 @@
       if (doc) openDocument(doc.id);
     }
   }
+  let projectPollTimer, projectPollGeneration=0;
   function render() {
+    clearTimeout(projectPollTimer);projectPollGeneration++;
     updateChrome();
     const labels = {projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
@@ -569,45 +571,83 @@
     }catch(error){toast(error.message,true);button.disabled=false;button.textContent='Stop local service';}
   }
 
+  function projectAutomaticStatus(project) {
+    if(!project.auto_refresh)return 'Automatic refresh is off.';
+    const status=project.automatic_status||{state:'waiting'};
+    const message={waiting:'Waiting for the first check.',captured:'New context captured.', 'up-to-date':'Latest local commit is captured.',error:status.detail||'Check the checkout and file permissions.'}[status.state]||'Waiting for a check.';
+    return message+(status.checked_at?' Last checked '+status.checked_at:'');
+  }
   function projectCard(project) {
     const last=project.last_refresh;
     const label=project.needs_refresh?'Selection changed':last?'Snapshot captured':'Not refreshed yet';
-    return `<article class="panel project-card"><div class="connection-card-title">${icon('projects')}<h2>${escape(project.name)}</h2><span class="connection-status">${label}</span></div><code class="project-path">${escape(project.path)}</code><p>${last?`Captured ${escape(last.at)} · ${escape(last.branch)}<br>Commit <code>${escape(last.commit.slice(0,12))}</code> · ${last.source_count} inspected sources · ${last.changed_count} changed paths`:'Save a connection, then refresh to capture selected documentation from its committed revision.'}</p><details><summary>Source selection</summary><p>Include: ${escape(project.include.join(', '))}</p><p>Exclude: ${escape(project.exclude.join(', ')||'No additional patterns')}</p></details>${last?.warnings?.length?notice(last.warnings.join(' ')):''}<div class="project-actions"><button class="button primary small" data-action="refresh-project" data-project-id="${escape(project.id)}">${icon('recall')} Refresh project context</button>${last?`<button class="button small" data-document="${escape(last.document_id)}">Open context</button>`:''}<button class="button small" data-action="edit-project" data-project-id="${escape(project.id)}">Edit</button><button class="button text small" data-action="remove-project" data-project-id="${escape(project.id)}">Disconnect</button></div></article>`;
+    return `<article class="panel project-card"><div class="connection-card-title">${icon('projects')}<h2>${escape(project.name)}</h2><span class="connection-status">${label}</span></div><code class="project-path">${escape(project.path)}</code><p>${last?`Captured ${escape(last.at)} · ${escape(last.branch)}<br>Commit <code>${escape(last.commit.slice(0,12))}</code> · ${last.source_count} inspected sources · ${last.changed_count} changed paths`:'Save a connection, then refresh to capture selected documentation from its committed revision.'}</p><div class="project-automatic"><button class="button small" role="switch" aria-checked="${project.auto_refresh===true}" aria-label="Automatic refresh for ${escape(project.name)}" data-action="toggle-project-automatic" data-project-id="${escape(project.id)}">Automatic refresh: ${project.auto_refresh?'On':'Off'}</button><p>${escape(projectAutomaticStatus(project))}</p></div><details><summary>Source selection</summary><p>Include: ${escape(project.include.join(', '))}</p><p>Exclude: ${escape(project.exclude.join(', ')||'No additional patterns')}</p></details>${last?.warnings?.length?notice(last.warnings.join(' ')):''}<div class="project-actions"><button class="button primary small" data-action="refresh-project" data-project-id="${escape(project.id)}">${icon('recall')} Refresh project context</button>${last?`<button class="button small" data-action="open-project-context" data-context-id="${escape(last.document_id)}">Open context</button>`:''}<button class="button small" data-action="edit-project" data-project-id="${escape(project.id)}">Edit</button><button class="button text small" data-action="remove-project" data-project-id="${escape(project.id)}">Disconnect</button></div></article>`;
   }
   function renderProjects() {
     $('#main').innerHTML=heading('PROJECT CONTEXT','Your projects. Remembered.','Connect local Git checkouts and capture source-backed context as they grow.')+
-      `<section class="notice">${icon('info')}<span><strong>Read committed work, preserve your notes.</strong><br>Refresh reads selected files from the local HEAD commit. It creates a new draft snapshot without pulling, pushing, running project code, or changing your repository. Uncommitted work is not imported. No tunnel or Git credentials are needed.</span></section><div class="projects-layout"><div><div id="project-list" aria-live="polite">Loading projects…</div><p class="connection-help">Refresh is manual. A captured snapshot is not continuous monitoring. Recall prefers the latest captured context for each connected project; older snapshots remain in the library. Review excerpts before sharing them with readers or cloud assistants.</p></div><aside id="project-form-slot"></aside></div>`;
+      `<section class="notice">${icon('info')}<span><strong>Read committed work, preserve your notes.</strong><br>Refresh reads selected files from the local HEAD commit. It creates a new draft snapshot without pulling, pushing, running project code, or changing your repository. Uncommitted work is not imported. No tunnel or Git credentials are needed.</span></section><div class="projects-layout"><div><div id="project-list" aria-live="polite">Loading projects…</div><p class="connection-help">Turn on automatic refresh per project to check for a changed local HEAD about every 60 seconds while the Mnemos service runs. Enabling it captures an initial snapshot if needed. Closing this tab does not stop the service; stopping Mnemos pauses all checks. No remote commits are fetched. Recall prefers the latest captured context for each connected project; older snapshots remain in the library. Review excerpts before sharing them with readers or cloud assistants.</p></div><aside id="project-form-slot"></aside></div>`;
     state.projectEditing=null;
     loadProjects();
+    const generation=projectPollGeneration;
+    const poll=async()=>{
+      if(generation!==projectPollGeneration||state.view!=='projects'||state.workspaceStale)return;
+      if(!document.hidden)await loadProjects(true);
+      if(generation===projectPollGeneration)projectPollTimer=setTimeout(poll,10000);
+    };
+    projectPollTimer=setTimeout(poll,10000);
   }
-  async function loadProjects() {
+  async function loadProjects(preserveForm=false) {
     try {
       const result=await api('/api/projects');
       if(state.view!=='projects'||state.workspaceStale)return;
       state.projects=result.projects;state.projectDefaults=result.defaults;
       $('#project-list').innerHTML=result.projects.length?result.projects.map(projectCard).join(''):notice('No projects connected yet. Add a local checkout to begin.');
-      renderProjectForm();
+      if(result.automatic_refresh?.problem)$('#project-list').insertAdjacentHTML('afterbegin',notice(result.automatic_refresh.problem,'error'));
+      if(!preserveForm)renderProjectForm();
     }catch(error){if(state.view==='projects')$('#project-list').innerHTML=notice(error.message,'error');}
   }
   function renderProjectForm() {
     const slot=$('#project-form-slot');if(!slot)return;
     const p=state.projectEditing||{name:'',path:'',...state.projectDefaults};
-    slot.innerHTML=`<form class="panel" id="project-form"><div class="panel-heading">${icon('folder')}<h2>${state.projectEditing?'Edit project':'Add a local project'}</h2></div><div class="field"><label for="project-name">Project name</label><input id="project-name" name="name" required maxlength="120" value="${escape(p.name)}" placeholder="e.g. Customer portal"></div><div class="field"><label for="project-path">Local Git checkout</label><input id="project-path" name="path" required value="${escape(p.path)}" placeholder="Absolute path to the repository root"><small>Use an existing checkout on this computer, outside other Obsidian vaults. Repository contents stay where they are.</small></div><div class="field"><label for="project-include">Documentation to include</label><textarea id="project-include" name="include" rows="4" required>${escape((p.include||[]).join('\n'))}</textarea><small>One relative path or glob per line. For example README.md or docs/*.md. Up to 12 matching text files, 6,000 characters each.</small></div><div class="field"><label for="project-exclude">Additional exclusions</label><textarea id="project-exclude" name="exclude" rows="3">${escape((p.exclude||[]).join('\n'))}</textarea><small>Hidden files, common credential paths, build output, symlinks and submodules are always excluded. Secret checks cannot catch every secret.</small></div><p class="connection-help">Saving registers your choices. Refresh separately to create a draft with excerpts, source revisions, and changed paths. Mnemos does not infer architecture or why changes were made.</p><div id="project-form-error" aria-live="polite"></div><div class="form-actions">${state.projectEditing?'<button class="button" type="button" data-action="new-project">Cancel edit</button>':''}<button class="button primary" type="submit">${state.projectEditing?'Save changes':'Add project'}</button></div></form>`;
+    slot.innerHTML=`<form class="panel" id="project-form"><div class="panel-heading">${icon('folder')}<h2>${state.projectEditing?'Edit project':'Add a local project'}</h2></div><div class="field"><label for="project-name">Project name</label><input id="project-name" name="name" required maxlength="120" value="${escape(p.name)}" placeholder="e.g. Customer portal"></div><div class="field"><label for="project-path">Local Git checkout</label><input id="project-path" name="path" required value="${escape(p.path)}" placeholder="Absolute path to the repository root"><small>Use an existing checkout on this computer, outside other Obsidian vaults. Repository contents stay where they are.</small></div><div class="field"><label for="project-include">Documentation to include</label><textarea id="project-include" name="include" rows="4" required>${escape((p.include||[]).join('\n'))}</textarea><small>One relative path or glob per line. For example README.md or docs/*.md. Up to 12 matching text files, 6,000 characters each.</small></div><div class="field"><label for="project-exclude">Additional exclusions</label><textarea id="project-exclude" name="exclude" rows="3">${escape((p.exclude||[]).join('\n'))}</textarea><small>Hidden files, common credential paths, build output, symlinks and submodules are always excluded. Secret checks cannot catch every secret.</small></div><label class="project-auto-choice"><input type="checkbox" name="auto_refresh"${p.auto_refresh?' checked':''}> Automatically refresh this project</label><p class="connection-help">Off by default. When on, Mnemos captures a draft when the local commit or source selection changes. When off, use Refresh project context. Snapshots include excerpts, source revisions, and changed paths. Mnemos does not infer architecture or why changes were made.</p><div id="project-form-error" aria-live="polite"></div><div class="form-actions">${state.projectEditing?'<button class="button" type="button" data-action="new-project">Cancel edit</button>':''}<button class="button primary" type="submit">${state.projectEditing?'Save changes':'Add project'}</button></div></form>`;
     $('#project-form').addEventListener('submit',saveProject);
   }
   async function saveProject(event) {
     event.preventDefault();
     const fields=Object.fromEntries(new FormData(event.target).entries());
     const lines=value=>String(value||'').split('\n').map(s=>s.trim()).filter(Boolean);
-    const payload={name:fields.name,path:fields.path,include:lines(fields.include),exclude:lines(fields.exclude)};
+    const payload={name:fields.name,path:fields.path,include:lines(fields.include),exclude:lines(fields.exclude),auto_refresh:fields.auto_refresh==='on'};
     if(state.projectEditing)Object.assign(payload,{id:state.projectEditing.id,revision:state.projectEditing.revision});
     const button=event.target.querySelector('[type="submit"]');button.disabled=true;
     try {
       await api('/api/projects',{method:'POST',body:JSON.stringify(payload)});
       if(state.view!=='projects'||state.workspaceStale)return;
-      state.projectEditing=null;await loadProjects();toast('Project saved. Refresh when you are ready to capture its context.');
+      state.projectEditing=null;await loadProjects();toast(payload.auto_refresh?'Project saved. Automatic refresh is on.':'Project saved. Refresh when you are ready to capture its context.');
     }catch(error){if($('#project-form-error'))$('#project-form-error').innerHTML=notice(error.message,'error');}
     finally{if(button.isConnected)button.disabled=false;}
+  }
+  async function toggleProjectAutomatic(button) {
+    const project=(state.projects||[]).find(p=>p.id===button.dataset.projectId);if(!project)return;
+    button.disabled=true;
+    try {
+      const result=await api('/api/projects/automatic',{method:'POST',body:JSON.stringify({id:project.id,revision:project.revision,auto_refresh:!project.auto_refresh})});
+      if(state.view!=='projects'||state.workspaceStale)return;
+      // Preserve unsaved source settings when the same project's switch changes.
+      if(state.projectEditing?.id===project.id&&state.projectEditing.revision===project.revision){
+        state.projectEditing={...state.projectEditing,revision:result.project.revision,auto_refresh:result.project.auto_refresh};
+        const choice=$('#project-form [name="auto_refresh"]');if(choice)choice.checked=result.project.auto_refresh;
+      }
+      await loadProjects(true);
+      toast(result.project.auto_refresh?'Automatic refresh is on. Checking this project now.':'Automatic refresh is off. Manual refresh is still available.');
+    }catch(error){toast(error.message,true);}
+    finally{if(button.isConnected)button.disabled=false;}
+  }
+  async function openProjectContext(id) {
+    try {
+      const result=await api('/api/documents/'+encodeURIComponent(id));
+      if(state.workspaceStale||state.view!=='projects')return;
+      state.data.documents=documents().filter(d=>d.id!==result.document.id);state.data.documents.unshift(result.document);
+      updateChrome();openDocument(result.document.id);
+    }catch(error){toast(error.message,true);}
   }
   function confirmRemoveProject(id) {
     const project=(state.projects||[]).find(p=>p.id===id);if(!project)return;
@@ -695,6 +735,8 @@
       case 'reload':load();break;
       case 'new-project':state.projectEditing=null;renderProjectForm();break;
       case 'edit-project':state.projectEditing=(state.projects||[]).find(p=>p.id===target.dataset.projectId);renderProjectForm();$('#project-name')?.focus();break;
+      case 'toggle-project-automatic':await toggleProjectAutomatic(target);break;
+      case 'open-project-context':await openProjectContext(target.dataset.contextId);break;
       case 'refresh-project':await mutateProject('refresh',target);break;
       case 'remove-project':confirmRemoveProject(target.dataset.projectId);break;
       case 'confirm-remove-project':closeOverlay();await mutateProject('remove',target);break;

@@ -6,7 +6,7 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 ## Included in this version
 
-- A Projects registry for local Git checkouts, with selected documentation, manual refresh, source revisions, and preserved snapshot history.
+- A Projects registry for local Git checkouts, with selected documentation, optional automatic refresh, source revisions, and preserved snapshot history.
 - A standalone desktop build recipe, a Mac drag-to-Applications installer, and a launcher that reuses a background local service.
 - A local connection dashboard with workspace targets, mismatch notices, local tests, and service stop controls.
 - A searchable web library with document types, project filters, and draft/verified status.
@@ -22,11 +22,11 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.4.0 reconstruction prompt](prompts/rebuild-mnemos-v0.4.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and all 98 tracked files at commit `c730eaaed4e256ccf15df61de842b55565f87849`, including Projects. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.5.0 reconstruction prompt](prompts/rebuild-mnemos-v0.5.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with automatic project refresh. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file is approximately 709 KiB because it carries the source itself, including the historical 0.3.0 prompt. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
-The frozen archive excludes private notes, credentials, machine configuration, Git history, and the current prompt itself. Its manifest verifies integrity, not publisher identity: use a trusted copy. Recover into a new folder to preserve existing installations. The [0.3.0 prompt](prompts/rebuild-mnemos-v0.3.0.md) remains available for the pre-Projects baseline.
+The frozen archive excludes private notes, credentials, machine configuration, Git history, and the reconstruction-prompt directory (to avoid recursively embedding older payloads). Its manifest verifies integrity, not publisher identity: use a trusted copy. Recover into a new folder to preserve existing installations. Historical prompts are retained in the repository but are not included in the new source capsule. The [0.3.0 prompt](prompts/rebuild-mnemos-v0.3.0.md) remains available for the pre-Projects baseline.
 
 ## Install and start
 
@@ -68,7 +68,7 @@ Keep your private library out of the public source repository. The default `data
 
 Open **Projects**, add an existing local Git checkout, and choose which documentation paths to include. **Refresh project context** creates a draft snapshot of committed sources, with commit/blob references and changed paths since the previous refresh. Existing notes and repository files remain intact. Recall prefers the latest captured snapshot; earlier snapshots remain searchable. No tunnel is required.
 
-Refresh is manual and reads committed `HEAD` only; it does not pull remote changes or import uncommitted work. Review excerpts before sharing them. See [Projects and project context](docs/projects.md) for setup, limits, CLI usage, and privacy boundaries.
+Each project has an **Automatic refresh** on/off switch, off by default. Enabled repos are checked about every 60 seconds while the local Mnemos service runs; new commits create new draft snapshots. Manual refresh remains available. Capture reads committed `HEAD` only; it does not pull remote changes or import uncommitted work. Review excerpts before sharing them. See [Projects and project context](docs/projects.md) for setup, limits, CLI usage, and privacy boundaries.
 
 ## Document work and resume it later
 

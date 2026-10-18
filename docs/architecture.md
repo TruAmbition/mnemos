@@ -99,8 +99,10 @@ These are future extensions, not features claimed by this release:
 Keep these additions optional so the core library stays readable in Obsidian and portable as ordinary files.
 
 
-## Registered Git projects (0.4)
+## Registered Git projects (0.5)
 
 `mnemos/projects.py` stores explicit local registrations in private config and uses bounded, read-only Git commands to inspect committed HEAD. Selected regular text blobs become new draft context notes, linked to previous snapshots. Exact commits and blob IDs provide provenance; generated snapshots make no semantic claims about architecture or rationale. Registrations preserve source/exclusion settings and optimistic revisions. HTTP management is local-owner-only and uses existing workspace guards. No remote fetch or repository code execution is performed.
 
 Ordinary recall and bounded handoff prefer the registered latest snapshot. Library search and explicit handoff selection retain history. Config/notes are separate atomic files; failures can leave an unreferenced draft but never require overwriting repository content or existing notes. See [project management](projects.md) for limits and portability.
+
+`mnemos/project_monitor.py` adds a local-service worker with persistent per-registration `auto_refresh` opt-in (default false), a 60-second interval, immediate wake on portal changes, and in-memory check/error status. The worker starts only for the local setup-enabled server and stops with it. It uses the same workspace → installation-pointer → data-lock order as browser writes. Opt-in and the latest commit/selection fingerprint are checked under the writer lock; duplicate monitors cannot create repeated snapshots for an unchanged fingerprint. Settings revisions exclude successful-capture metadata so background writes do not invalidate open settings forms. Error isolation permits later repos to run. No scheduled OS job or remote Git operation is installed.

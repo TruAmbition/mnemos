@@ -72,7 +72,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request(path='/api/projects')[0], 200)
             self.assertEqual(self.request('POST', '/api/projects/refresh', {'id': 'project-fixture'})[0], 200)
             refresh.reset_mock()
-            for endpoint in ['/api/projects', '/api/projects/refresh', '/api/projects/remove']:
+            for endpoint in ['/api/projects', '/api/projects/refresh', '/api/projects/remove', '/api/projects/automatic']:
                 self.assertEqual(self.request('POST', endpoint, {}, {'X-Mnemos-Workspace': 'stale'})[0], 409)
                 self.assertEqual(self.request('POST', endpoint, {}, {'Origin': 'https://elsewhere.invalid'})[0], 403)
                 for role in ['reader', 'author']:

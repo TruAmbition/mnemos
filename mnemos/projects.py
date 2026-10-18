@@ -82,7 +82,10 @@ def _head(path):
 
 
 def _revision(project):
-    return hashlib.sha256(json.dumps(project, sort_keys=True).encode()).hexdigest()
+    # Background snapshots must not invalidate an open settings form. Only
+    # settings changes conflict; all mutations still reload under the data lock.
+    settings = {k: v for k, v in project.items() if k not in {'last_refresh', 'updated'}}
+    return hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()
 
 
 def _public(project):
@@ -101,7 +104,7 @@ def _entries(data):
 def list_projects(data):
     return {'projects': [_public(p) for p in _entries(data)], 'defaults': {
         'include': DEFAULT_INCLUDE, 'exclude': DEFAULT_EXCLUDE},
-        'scope': 'Local committed HEAD only. Last refresh is a snapshot, not live monitoring. No repository writes or network access.'}
+        'scope': 'Local committed HEAD only. Snapshots refresh manually or with per-project opt-in while the local service runs. No repository writes or network access.'}
 
 
 def _patterns(value, default):
@@ -145,12 +148,16 @@ def save_project(data, payload):
         config = core.load_config(data)
         entries = _entries(data)
         existing = _find(entries, payload) if payload.get('id') else None
+        automatic = payload.get('auto_refresh', existing.get('auto_refresh', False) if existing else False)
+        if type(automatic) is not bool:
+            raise core.MnemosError('Automatic refresh must be on or off.')
         if any(p is not existing and (p['path'] == str(path) or p['name'].casefold() == name.casefold()) for p in entries):
             raise core.MnemosError('That checkout or project name is already registered. Edit its existing entry.')
         if not existing and len(entries) >= MAX_PROJECTS:
             raise core.MnemosError(f'This workspace supports up to {MAX_PROJECTS} registered projects.')
         project = dict(existing or {'id': 'project-' + secrets.token_hex(6), 'created': core.now()})
-        project.update(name=name, path=str(path), include=includes, exclude=excludes, updated=core.now())
+        project.update(name=name, path=str(path), include=includes, exclude=excludes,
+                       auto_refresh=automatic, updated=core.now())
         # Keep the previous snapshot as evidence, but settings changes require a new refresh.
         if existing:
             entries[entries.index(existing)] = project
@@ -159,6 +166,34 @@ def save_project(data, payload):
         config['projects'] = entries
         core.save_config(data, config)
         return {'project': _public(project)}
+
+
+def set_automatic(data, payload):
+    """Allow disabling a missing checkout without requiring Git access."""
+    with core.storage_lock(data):
+        config = core.load_config(data)
+        entries = _entries(data)
+        project = _find(entries, payload)
+        value = payload.get('auto_refresh')
+        if type(value) is not bool:
+            raise core.MnemosError('Automatic refresh must be on or off.')
+        project.update(auto_refresh=value, updated=core.now())
+        config['projects'] = entries
+        core.save_config(data, config)
+        return {'project': _public(project)}
+
+
+def refresh_if_changed(data, identifier):
+    """Recheck persisted opt-in under the writer lock, deduplicating processes."""
+    with core.storage_lock(data):
+        project = next((p for p in _entries(data) if p['id'] == identifier), None)
+        if not project or project.get('auto_refresh') is not True:
+            return {'state': 'off'}
+        head = _head(_root(project['path']))
+        if project.get('last_refresh', {}).get('fingerprint') == _fingerprint(project, head):
+            return {'state': 'up-to-date', 'commit': head}
+        result = refresh_project(data, _public(project))
+        return {'state': 'captured', 'commit': result['project']['last_refresh']['commit']}
 
 
 def remove_project(data, payload):

@@ -1,6 +1,14 @@
-# Version 0.4 validation
+# Version 0.5 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## Automatic project refresh (0.5)
+
+The source passed **147 Python tests and 39 JavaScript tests**. Ten additional Git/service tests cover default-off and strict opt-in, initial/new-commit capture, unchanged-commit deduplication, preservation of human edits and open settings revisions, changed source selection, missing-folder disable, persistence across monitors, duplicate workers, active-workspace selection, stale-pointer/shared-server/stop guards, error isolation/retry, legacy registrations, and an actual running server detecting commits without refresh requests. HTTP authorization tests include the new automatic-refresh endpoint; UI helper tests verify accessible switches and escaped error text.
+
+In the isolated browser workspace, automatic refresh was enabled for the synthetic Aurora service repository. A new fixture commit was captured without pressing Refresh. An open settings form retained its unsaved source selection, the per-project switch turned off, the form saved successfully after background capture, and Open context fetched the newly created draft with its exact commit and excerpt. Re-enabling captured the changed selection. The test server used a shortened interval; the shipped default remains 60 seconds. No real user repo was enabled automatically.
+
+The 0.5 Apple Silicon standalone app and DMG were rebuilt. The bundled CLI initialized a disposable workspace, registered a synthetic checkout, and the bundled server captured its initial context automatically with a running 60-second worker. The bundled CLI then disabled the choice successfully. The app remains ad-hoc signed, not notarized; Windows/Linux packaged behavior is not locally validated.
 
 ## Projects (0.4)
 

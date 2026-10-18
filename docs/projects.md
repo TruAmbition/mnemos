@@ -1,18 +1,32 @@
 # Projects and project context
 
-Mnemos 0.4 registers existing local Git checkouts and captures selected committed documentation as source-linked context. **Projects** is the configuration section; **Project Context** is the knowledge captured from it. Refresh is manual. No tunnel, hosting account, or model API key is required.
+Mnemos 0.5 registers existing local Git checkouts and captures selected committed documentation as source-linked context. **Projects** is the configuration section; **Project Context** is the knowledge captured from it. Refresh can be manual or automatic, with a separate opt-in for each repository. No tunnel, hosting account, or model API key is required.
 
 ## Connect and refresh
 
 1. Start the normal local launcher and open **Projects**.
 2. Enter a project name and the absolute path to its Git repository root. Git must be installed and available to Mnemos. Subfolders and symlinked paths are rejected.
 3. Review **Documentation to include** and **Additional exclusions**, one relative path or glob per line. Defaults include `README.md`, `docs/README.md`, and `docs/architecture.md`. Add relevant sources deliberately, for example `docs/runbooks/*.md`.
-4. Click **Add project**, then **Refresh project context**. Registration alone does not read source bodies or create a note.
+4. Click **Add project**, then **Refresh project context**. With automatic refresh off (the default), registration alone does not read source bodies or create a note.
 5. Open the resulting draft and review the excerpts. Ask your assistant to recall the project by name. Its existing capture tools can turn source evidence into explanations, runbooks, or decisions.
 
-The card shows the captured commit, branch at inspection, UTC capture time, inspected-source count, changed-path count, and inspection limits. These describe the last snapshot, not continuous monitoring. Refresh reads the checkout's committed `HEAD`; it does not pull remote commits, change branches, or include staged, unstaged, or untracked content. Use your normal Git workflow first when newer remote work should be included. Bare repositories and repositories without a locally available commit cannot produce a snapshot.
+The card shows the captured commit, branch at inspection, UTC capture time, inspected-source count, changed-path count, and inspection limits. These describe the last snapshot; automatic check status is shown separately. Refresh reads the checkout's committed `HEAD`; it does not pull remote commits, change branches, or include staged, unstaged, or untracked content. Use your normal Git workflow first when newer remote work should be included. Bare repositories and repositories without a locally available commit cannot produce a snapshot.
 
 Each new commit or changed source selection creates a **new draft**. Repeating the same commit and settings returns its existing snapshot, preserving human edits. If that snapshot was deleted, an explicit refresh creates a replacement with a new ID. Earlier notes remain intact and linked through Obsidian relationships. Disconnect removes only the registration, keeping the repository and notes. Edit can change the name, path, or selection; revision checks prevent stale changes from overwriting newer choices.
+
+## Automatic refresh
+
+Use **Automatic refresh: Off / On** on each project card, or **Automatically refresh this project** when adding/editing it. New and existing registrations default to off; choices persist independently in the active workspace. Turning it on checks immediately and creates an initial draft if the project has never been captured. Turning it off leaves manual refresh available and does not delete notes.
+
+While the **local Mnemos service** runs, a single background worker checks enabled repos' locally available `HEAD` about every 60 seconds after the previous pass finishes. Slow Git inspection can extend this interval. A changed commit (including a branch switch/reset) or changed source-selection settings creates a new draft snapshot. Several commits between checks are represented by the latest observed HEAD and comparison to the previous snapshot; this is not an every-commit audit log. Uncommitted edits do not trigger capture. Commit changes outside the selected documentation still update the commit and changed-path evidence.
+
+Closing the browser tab does not stop a background service. **Stop local service** pauses checks; restarting Mnemos resumes saved opt-ins. This feature does not add a login item, operating-system scheduler, Git hook, watcher inside your repository, tunnel, remote fetch, or API cost. CLI and MCP-only sessions do not start the worker. Shared/authenticated web-reader servers do not run local project inspection. The regular local launcher must be running for automatic capture.
+
+Cards show on/off, the last check time (UTC), and errors such as an unavailable folder. Errors preserve prior snapshots and retry next pass without blocking checks for other repos. Source warnings remain on the snapshot. The Projects view updates every 10 seconds while visible, preserving unsaved settings. A running capture completes before a disable or workspace-switch request is acknowledged. Background capture does not invalidate an open settings revision; competing settings changes still require a reload. Git operations have bounded time/output limits, but a large or inaccessible checkout can briefly delay local portal actions while its inspection completes.
+
+The worker rechecks opt-in under the storage lock; concurrent local services deduplicate the same commit/selection. Switching the active workspace moves monitoring to that workspace's saved choices. If another process changes the installation pointer, the old server fails closed and must be restarted. Status/check timestamps are in memory; the last successful capture and opt-in persist. A deleted latest note is not recreated just because time passed; use manual refresh to recreate it at the same commit.
+
+Via CLI, use `python3 -m mnemos projects automatic --file project-automatic.json`, where the JSON contains the current `id`, `revision`, and `"auto_refresh": true` or `false`. This can disable an inaccessible repository without inspecting Git. CLI changes are noticed on the running worker's next pass; saving through the portal wakes it immediately.
 
 ## Evidence and limits
 
@@ -39,10 +53,10 @@ python3 -m mnemos projects refresh --file project-reference.json
 python3 -m mnemos projects remove --file project-reference.json
 ```
 
-All accept `--data` to pin a workspace. Save takes `name`, `path`, optional `include`/`exclude` arrays; updates also require existing `id` and `revision`. Refresh/remove take the exact current `id`/`revision` from list/save/refresh. Keep machine-specific input JSON out of public source. Existing assistants use their five normal tools to recall captured project context; registration and refresh remain explicit local-owner operations.
+All accept `--data` to pin a workspace. Save takes `name`, `path`, optional `include`/`exclude` arrays and an `auto_refresh` boolean; updates also require existing `id` and `revision`. Refresh/remove take the exact current `id`/`revision` from list/save/refresh. Keep machine-specific input JSON out of public source. Existing assistants use their five normal tools to recall captured project context; registration, automatic-refresh choices, and manual refresh remain local-owner operations.
 
-HTTP routes are `GET /api/projects`, `POST /api/projects`, `POST /api/projects/refresh`, and `POST /api/projects/remove`, with local-owner, same-origin, and workspace guards. Up to 30 projects are supported. Refresh serializes workspace changes during capture. Note and config saves are separately atomic: an interrupted config save can leave a valid unreferenced draft in the library for review.
+HTTP routes are `GET /api/projects`, `POST /api/projects`, `POST /api/projects/refresh`, `POST /api/projects/remove`, and `POST /api/projects/automatic`, with local-owner, same-origin, and workspace guards. Up to 30 projects are supported. Refresh serializes workspace changes during capture. Note and config saves are separately atomic: an interrupted config save can leave a valid unreferenced draft in the library for review.
 
-Remote cloning, scheduled refresh, working-tree capture, embeddings, code execution, and automatic semantic rewriting are outside this version. A tunnel remains a separate choice for approved cloud access to the captured vault notes.
+Remote cloning, OS login/startup scheduling, working-tree capture, embeddings, code execution, and automatic semantic rewriting are outside this version. A tunnel remains a separate choice for approved cloud access to the captured vault notes.
 
 The Git environment restrictions follow the [official Git environment and protocol documentation](https://git-scm.com/docs/git). Replacement refs are disabled so recorded object IDs refer to the actual captured objects.

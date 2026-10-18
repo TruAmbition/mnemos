@@ -59,6 +59,8 @@ class MnemosServer(ThreadingHTTPServer):
         self.connection_checks = {}
         self.launcher_managed = False
         self.stopping = False
+        from .project_monitor import ProjectMonitor
+        self.project_monitor = ProjectMonitor(self)
         self.session_lock = threading.RLock()
         super().__init__(address, handler or Handler)
         port = self.server_address[1]
@@ -77,6 +79,26 @@ class MnemosServer(ThreadingHTTPServer):
         if include_path:
             result['data_path'] = str(self.data_path)
         return result
+
+    def serve_forever(self, poll_interval=0.5):
+        self.project_monitor.start()
+        try:
+            return super().serve_forever(poll_interval)
+        finally:
+            self.project_monitor.stop()
+
+    def shutdown(self):
+        # Wait for an in-flight capture before acknowledging service shutdown.
+        with self.workspace_lock:
+            self.stopping = True
+            self.project_monitor.stop()
+        return super().shutdown()
+
+    def server_close(self):
+        if hasattr(self, 'project_monitor'):
+            with self.workspace_lock:
+                self.project_monitor.stop()
+        return super().server_close()
 
     def assert_selection_current(self):
         if self.installation_file and onboarding.selection_fingerprint(self.installation_file) != self.selection_fingerprint:
@@ -262,6 +284,7 @@ class Handler(BaseHTTPRequestHandler):
                     # No request can cross this activation: _handle holds workspace_lock.
                     self.server.data_path = selected
                     self.server.workspace_id = revision
+                    self.server.project_monitor.wake.set()
                     if switched:
                         with self.server.session_lock:
                             self.server.sessions.clear()
@@ -305,16 +328,19 @@ class Handler(BaseHTTPRequestHandler):
         return self._dispatch_routes(method, parsed, path)
 
     def _dispatch_routes(self, method, parsed, path):
-        if path in {'/api/projects', '/api/projects/refresh', '/api/projects/remove'}:
+        if path in {'/api/projects', '/api/projects/refresh', '/api/projects/remove', '/api/projects/automatic'}:
             self._require_local_setup()
             from . import projects
             if method == 'GET' and path == '/api/projects':
-                return self._json(projects.list_projects(self.server.data_path))
+                return self._json(self.server.project_monitor.overview(projects.list_projects(self.server.data_path)))
             if method == 'POST':
                 operation = {'/api/projects': projects.save_project,
                              '/api/projects/refresh': projects.refresh_project,
-                             '/api/projects/remove': projects.remove_project}[path]
-                return self._json(operation(self.server.data_path, self._body()))
+                             '/api/projects/remove': projects.remove_project,
+                             '/api/projects/automatic': projects.set_automatic}[path]
+                result = operation(self.server.data_path, self._body())
+                self.server.project_monitor.wake.set()
+                return self._json(result)
             raise core.MnemosError('Method not supported.', 405)
         if path == '/api/setup/inspect' and method == 'POST':
             return self._inspect_setup(self._body())

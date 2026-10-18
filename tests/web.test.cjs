@@ -462,5 +462,16 @@ test('Project cards escape repository text and show snapshot scope without claim
   assert.match(rendered, /Selection changed/);
   assert.match(rendered, /Refresh project context/);
   assert.match(rendered, /Captured/);
-  assert.match(rendered, /data-document="context-safe"/);
+  assert.match(rendered, /data-context-id="context-safe"/);
+});
+
+
+test('Automatic project controls expose persisted on/off and escape check failures', () => {
+  const project={id:'project-1',name:'Nimbus',path:'/repo',include:['README.md'],exclude:[]};
+  assert.match(h.projectCard(project),/role="switch" aria-checked="false"/);
+  const enabled=h.projectCard({...project,auto_refresh:true,automatic_status:{state:'error',detail:'<img src=x onerror=alert(1)>',checked_at:'2026-10-17T20:00:00Z'}});
+  assert.match(enabled,/role="switch" aria-checked="true"/);
+  assert.match(enabled,/Automatic refresh: On/);
+  assert.match(enabled,/Last checked/);
+  assert.ok(!enabled.includes('<img'));
 });

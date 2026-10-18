@@ -18,8 +18,8 @@ def main(argv=None) -> int:
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
         if command == "projects":
-            sub.add_argument('action', choices=['list', 'save', 'refresh', 'remove'], default='list', nargs='?')
-            sub.add_argument('--file', help='JSON settings for save, or id and revision for refresh/remove')
+            sub.add_argument('action', choices=['list', 'save', 'refresh', 'remove', 'automatic'], default='list', nargs='?')
+            sub.add_argument('--file', help='JSON settings, or id/revision; automatic also needs auto_refresh boolean')
         elif command == "connections":
             sub.add_argument("--project", help="Project folder whose assistant settings to inspect")
         elif command == "init":
@@ -59,7 +59,7 @@ def main(argv=None) -> int:
                 if not args.file:
                     raise ValueError('Use --file with a project JSON object; list returns current revisions.')
                 payload = json.loads(Path(args.file).read_text('utf-8'))
-                operation = {'save': projects.save_project, 'refresh': projects.refresh_project, 'remove': projects.remove_project}[args.action]
+                operation = {'save': projects.save_project, 'refresh': projects.refresh_project, 'remove': projects.remove_project, 'automatic': projects.set_automatic}[args.action]
                 result = operation(args.data, payload)
         elif args.command == "connections":
             from .connections import inventory, public_inventory

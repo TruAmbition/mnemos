@@ -34,3 +34,9 @@
 /* Registered Git projects and committed context snapshots. */
 .projects-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:24px;align-items:start}.project-card{margin-bottom:18px}.project-card h2{font-size:18px;line-height:1.5;overflow-wrap:anywhere}.project-path{display:block;padding:12px 14px;margin-top:16px;background:#f5f7ef;border:1px solid #e1e8d8;border-radius:6px;font-size:11px;line-height:1.8;overflow-wrap:anywhere}.project-card p,.project-card details{font-size:12px;line-height:1.9;color:#65745b;overflow-wrap:anywhere}.project-card summary{cursor:pointer}.project-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.project-card .notice{margin-top:16px;font-size:11px}.projects-layout textarea{min-height:84px;resize:vertical}.projects-layout .form-actions{flex-wrap:wrap}.project-card .connection-card-title>.icon{color:#72865c;flex:none}
 @media(max-width:1050px){.projects-layout{grid-template-columns:1fr}.projects-layout>aside{grid-row:1}}@media(max-width:600px){.project-actions .button{flex:1 1 auto}.project-card{padding:18px}.project-card h2{font-size:16px}}
+
+.project-automatic { margin: 16px 0; padding: 12px; background: #f4f7f0; border-radius: 10px; }
+.project-automatic p { font-size: 11px; margin: 8px 0 0; overflow-wrap: anywhere; }
+.project-automatic [aria-checked="true"] { background: #ddebcc; border-color: #81966f; }
+.project-auto-choice { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.project-auto-choice input { width: auto; }
