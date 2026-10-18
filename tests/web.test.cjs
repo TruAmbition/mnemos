@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -512,4 +512,29 @@ test('Skill matching safely renders local metadata and scoped review handoffs', 
   assert.match(prompt,/cache-note @ revision-one/);
   assert.match(prompt,/do not overwrite or install/);
   assert.match(prompt,/If files or tools are unavailable/);
+});
+
+
+test('First visit opens the guide, remembers it, and preserves direct destinations', () => {
+  const values=new Map();
+  context.window.localStorage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+  assert.equal(h.firstVisitView(''),'getting-started');
+  assert.equal(h.firstVisitView('library'),'getting-started');
+  for(const destination of ['capture','recall','skills','document','getting-started'])assert.equal(h.firstVisitView(destination),destination);
+  assert.equal(values.size,0,'Checking a destination should not mark the guide as viewed');
+  h.rememberGettingStarted();
+  assert.equal(h.firstVisitView(''),'library');
+  assert.equal(h.firstVisitView('library'),'library');
+  assert.equal(h.firstVisitView('getting-started'),'getting-started');
+  values.clear();
+  assert.equal(h.firstVisitView(''),'getting-started');
+  delete context.window.localStorage;
+});
+
+test('Blocked browser storage does not break onboarding or explicit links', () => {
+  Object.defineProperty(context.window,'localStorage',{configurable:true,get(){throw new Error('Storage blocked');}});
+  assert.equal(h.firstVisitView(''),'getting-started');
+  assert.doesNotThrow(()=>h.rememberGettingStarted());
+  assert.equal(h.firstVisitView('document'),'document');
+  delete context.window.localStorage;
 });

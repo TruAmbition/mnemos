@@ -4,7 +4,7 @@
 
 Start as one author with a team of readers. Add named author credentials when more engineers contribute. Markdown stays the source of truth, so the knowledge remains useful outside this application.
 
-New here? Open **Getting started** in the app sidebar for an introduction, a first-task walkthrough, and copyable capture prompts. You can return to it at any time from the Library.
+On your first visit to the local portal, **Getting started** opens with an introduction, a first-task walkthrough, and copyable capture prompts. Later launches open the Library. This is remembered per browser profile and Mnemos address; clearing site data resets it. If browser storage is blocked, the guide may appear again on the next launch. Explicit page/document links keep their destination, and Getting started is always available in the sidebar.
 
 ## Included in this version
 
@@ -25,13 +25,15 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.7.0 reconstruction prompt](prompts/rebuild-mnemos-v0.7.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with Available skills, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.7.1 reconstruction prompt](prompts/rebuild-mnemos-v0.7.1.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with first-visit onboarding, skill suggestion explanations, existing-skill matching, AI workflow handoffs, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file carries the application source itself. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
 The frozen archive excludes private notes, credentials, machine configuration, Git history, and the reconstruction-prompt directory (to avoid recursively embedding older payloads). Its manifest verifies integrity, not publisher identity: use a trusted copy. Recover into a new folder to preserve existing installations. Historical prompts are retained in the repository but are not included in the new source capsule. The [0.3.0 prompt](prompts/rebuild-mnemos-v0.3.0.md) remains available for the pre-Projects baseline.
 
 ## Install and start
+
+**Version 0.7.1 is a source and reconstruction-prompt release.** The existing 0.7.0 desktop downloads do not contain these latest changes. Use the source launcher below, or build a new desktop package from this source.
 
 **Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.
 

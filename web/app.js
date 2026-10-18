@@ -159,9 +159,30 @@
     if (window.location.hash === `#${view}`) {state.view=view;render();}
     else window.location.hash = view;
   }
+  const gettingStartedKey = 'mnemos-getting-started-seen-v1';
+  let initialRoute = true;
+  function firstVisitView(view) {
+    // Explicit links, including individual documents, keep their destination.
+    if (view && view !== 'library') return view;
+    try { if (window.localStorage.getItem(gettingStartedKey) === '1') return view || 'library'; }
+    catch { /* With storage unavailable, show the guide once per page session. */ }
+    return 'getting-started';
+  }
+  function rememberGettingStarted() {
+    try { window.localStorage.setItem(gettingStartedKey, '1'); }
+    catch { /* Navigation remains usable even when persistence is blocked. */ }
+  }
   function route() {
     if (!state.data) return;
-    const [view, id] = window.location.hash.slice(1).split('/');
+    let [view, id] = window.location.hash.slice(1).split('/');
+    if (initialRoute) {
+      initialRoute = false;
+      const destination = firstVisitView(view);
+      if (destination !== view) {
+        view = destination;
+        window.history.replaceState(null, '', '#'+view);
+      }
+    }
     const valid = [...(isOwner()&&state.data.setup_available?['connections','projects']:[]),'getting-started','library','recall','handoff','workflows',...(canWrite()?['capture','skills']:[]),...((isOwner()||staticMode)?['settings']:[])];
     state.view = valid.includes(view) ? view : 'library';
     closeOverlay();
@@ -186,6 +207,7 @@
     return `<div class="page-heading"><div><span class="eyebrow">${escape(eyebrow)}</span><h1>${escape(title)}</h1><p>${escape(description)}</p></div>${action}</div>`;
   }
   function renderGettingStarted() {
+    rememberGettingStarted();
     const localOwner=isOwner()&&state.data.setup_available===true;
     const capturePrompt="Document this work in Mnemos using this conversation and the evidence I provide. Search existing notes first and update matching documentation. Capture what changed, why, repeatable steps, troubleshooting, checks actually performed, unresolved issues, and next actions. Create a concise work log and separate reusable runbooks or knowledge items where useful. Link related notes, remove secrets, save as drafts, and report the saved note titles and IDs. Identify missing evidence instead of assuming access to my other chats.";
     const handoffPrompt="Use the supplied mnemos-handoff skill and the evidence in this conversation to document this work. Return one new draft capture JSON for import into Mnemos. Include the outcome, decisions and reasons, repeatable steps, checks actually performed, unresolved issues, and next actions. Preserve supplied source references and related note IDs, remove secrets, and do not claim it was saved to my vault.";

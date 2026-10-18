@@ -1,6 +1,16 @@
-# Version 0.7.0 validation
+# Version 0.7.1 validation
 
-Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## First-visit guide and skill matching (0.7.1)
+
+The complete source passed **173 Python tests and 46 JavaScript tests**. First-visit checks cover fresh and returning browser state, explicit destinations, clearing the preference, and blocked storage. Existing skill matching checks cover exact names, keyword overlap, saved-build provenance and freshness, stale suggestions, bounded output, access boundaries, and safe UI rendering.
+
+A disposable local instance opened Getting started on its first root visit, then the Library on a second root visit in the same browser. Direct page links are preserved. The preference is local to the browser profile and origin, not an engineer account or vault setting. Clearing site data resets it; blocked storage may show the guide again on a new page session. Getting started remains available explicitly. Guide rendering was also checked for owner, author, reader, static-reader, and signed-out roles; authoring and setup links follow their existing access boundaries.
+
+The live source portal includes the Getting started guide, copyable capture/handoff prompts, suggestion explanations, and existing-skill checks. Matches use metadata and saved-build provenance, not semantic AI analysis. No user notes or installed skills are modified by matching.
+
+Version 0.7.1 is a source and reconstruction-prompt release. The existing 0.7.0 desktop binaries have not been rebuilt for this patch; use the source launcher or build a new desktop package from the recovered source. Other operating systems and fresh cloud-account integrations were not exercised for this patch.
 
 ## AI workflow handoff and existing skills (0.7)
 
