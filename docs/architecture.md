@@ -97,3 +97,10 @@ These are future extensions, not features claimed by this release:
 5. **Controlled execution.** A separately scoped runner with typed task inputs, bounded retries, approvals, isolated execution, checkpoints, and documented rollback. The plan format provides a starting point, not an existing execution engine.
 
 Keep these additions optional so the core library stays readable in Obsidian and portable as ordinary files.
+
+
+## Registered Git projects (0.4)
+
+`mnemos/projects.py` stores explicit local registrations in private config and uses bounded, read-only Git commands to inspect committed HEAD. Selected regular text blobs become new draft context notes, linked to previous snapshots. Exact commits and blob IDs provide provenance; generated snapshots make no semantic claims about architecture or rationale. Registrations preserve source/exclusion settings and optimistic revisions. HTTP management is local-owner-only and uses existing workspace guards. No remote fetch or repository code execution is performed.
+
+Ordinary recall and bounded handoff prefer the registered latest snapshot. Library search and explicit handoff selection retain history. Config/notes are separate atomic files; failures can leave an unreferenced draft but never require overwriting repository content or existing notes. See [project management](projects.md) for limits and portability.

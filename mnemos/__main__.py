@@ -14,10 +14,13 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command == "connections":
+        if command == "projects":
+            sub.add_argument('action', choices=['list', 'save', 'refresh', 'remove'], default='list', nargs='?')
+            sub.add_argument('--file', help='JSON settings for save, or id and revision for refresh/remove')
+        elif command == "connections":
             sub.add_argument("--project", help="Project folder whose assistant settings to inspect")
         elif command == "init":
             sub.add_argument("--author", default="Local engineer")
@@ -48,7 +51,17 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command == "connections":
+        if args.command == "projects":
+            from . import projects
+            if args.action == 'list':
+                result = projects.list_projects(args.data)
+            else:
+                if not args.file:
+                    raise ValueError('Use --file with a project JSON object; list returns current revisions.')
+                payload = json.loads(Path(args.file).read_text('utf-8'))
+                operation = {'save': projects.save_project, 'refresh': projects.refresh_project, 'remove': projects.remove_project}[args.action]
+                result = operation(args.data, payload)
+        elif args.command == "connections":
             from .connections import inventory, public_inventory
             result = public_inventory(inventory(args.data, {}, args.project))
         elif args.command == "init":

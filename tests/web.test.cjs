@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -451,4 +451,16 @@ test('Connection cards escape local configuration text and distinguish pinned ta
   assert.match(html,/&lt;script&gt;/);
   assert.ok(!html.includes('<img'));
   assert.match(html,/data-client="claude-code"/);
+});
+
+
+test('Project cards escape repository text and show snapshot scope without claiming live sync', () => {
+  const rendered = h.projectCard({id:'project-safe', name:'<img src=x onerror=alert(1)>', path:'/local/<script>repo</script>', include:['<b>README.md</b>'], exclude:[], needs_refresh:true, last_refresh:{at:'2026-10-17T20:00:00Z', branch:'<svg onload=alert(1)>', commit:'abcdef1234567890', source_count:2, changed_count:3, document_id:'context-safe', warnings:['<script>unsafe</script>']}});
+  assert.ok(!rendered.includes('<img'));
+  assert.ok(!rendered.includes('<script>'));
+  assert.ok(!rendered.includes('<svg onload'));
+  assert.match(rendered, /Selection changed/);
+  assert.match(rendered, /Refresh project context/);
+  assert.match(rendered, /Captured/);
+  assert.match(rendered, /data-document="context-safe"/);
 });

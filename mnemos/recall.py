@@ -94,4 +94,19 @@ def recall_documents(documents, query, budget=6000):
 
 def recall(data_path, query, budget=6000, role='owner'):
     from .core import list_documents
-    return recall_documents(list_documents(data_path, role=role), query, budget)
+    return recall_documents(current_project_context(data_path, list_documents(data_path, role=role)), query, budget)
+
+
+def current_project_context(data_path, documents):
+    """Prefer the registered latest snapshot in ordinary recall; history stays searchable."""
+    from .core import load_config
+    projects = load_config(data_path).get('projects', [])
+    latest = {p['id']: p.get('last_refresh', {}).get('document_id') for p in projects}
+    result = []
+    for doc in documents:
+        source = next((s for s in doc.get('sources', []) if isinstance(s, str) and s.startswith('git:project-')), '')
+        project_id = source[4:].split('@', 1)[0]
+        if 'project-context' in doc.get('tags', []) and project_id in latest and latest[project_id] and doc['id'] != latest[project_id]:
+            continue
+        result.append(doc)
+    return result

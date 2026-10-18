@@ -65,6 +65,22 @@ class ServerTests(unittest.TestCase):
             self.server.setup_enabled = False
             self.assertEqual(self.request(path='/api/connections')[0], 403)
 
+    def test_project_management_is_local_owner_only_and_workspace_guarded(self):
+        from unittest.mock import patch
+        from mnemos import projects
+        with patch.object(projects, 'list_projects', return_value={'projects': []}), patch.object(projects, 'refresh_project', return_value={'unchanged': True}) as refresh:
+            self.assertEqual(self.request(path='/api/projects')[0], 200)
+            self.assertEqual(self.request('POST', '/api/projects/refresh', {'id': 'project-fixture'})[0], 200)
+            refresh.reset_mock()
+            for endpoint in ['/api/projects', '/api/projects/refresh', '/api/projects/remove']:
+                self.assertEqual(self.request('POST', endpoint, {}, {'X-Mnemos-Workspace': 'stale'})[0], 409)
+                self.assertEqual(self.request('POST', endpoint, {}, {'Origin': 'https://elsewhere.invalid'})[0], 403)
+                for role in ['reader', 'author']:
+                    self.assertEqual(self.request('POST', endpoint, {}, {'Authorization': 'Bearer ' + self.token(role)})[0], 403)
+            refresh.assert_not_called()
+            self.server.setup_enabled = False
+            self.assertEqual(self.request(path='/api/projects')[0], 403)
+
     def test_stop_requires_owner_workspace_and_managed_launcher(self):
         from unittest.mock import patch
         self.assertEqual(self.request('POST', '/api/runtime/stop', {})[0], 409)

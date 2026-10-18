@@ -6,6 +6,7 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 ## Included in this version
 
+- A Projects registry for local Git checkouts, with selected documentation, manual refresh, source revisions, and preserved snapshot history.
 - A standalone desktop build recipe, a Mac drag-to-Applications installer, and a launcher that reuses a background local service.
 - A local connection dashboard with workspace targets, mismatch notices, local tests, and service stop controls.
 - A searchable web library with document types, project filters, and draft/verified status.
@@ -19,9 +20,9 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 The application uses Python's standard library. It does not require a model API key, paid inference service, database server, or Obsidian community plugin. Your chosen assistant does the reasoning; Mnemos stores and retrieves the knowledge.
 
-## Recreate this version with ChatGPT
+## Recreate a frozen version with ChatGPT
 
-If you cannot obtain the repository normally, download the standalone [Mnemos 0.3.0 reconstruction prompt](prompts/rebuild-mnemos-v0.3.0.md). Attach the **entire file** to ChatGPT and ask it to follow the prompt. It includes detailed technical/setup instructions, a Python recovery utility, and a checksum-verified snapshot of all 94 source files at commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. No GitHub access or Git installation is needed to recover that source.
+The historical 0.3.0 prompt below predates Projects. If you need that baseline without the repository, download the standalone [Mnemos 0.3.0 reconstruction prompt](prompts/rebuild-mnemos-v0.3.0.md). Attach the **entire file** to ChatGPT and ask it to follow the prompt. It includes detailed technical/setup instructions, a Python recovery utility, and a checksum-verified snapshot of all 94 source files at commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. No GitHub access or Git installation is needed to recover that source.
 
 The file is approximately 355 KiB because it carries the application itself. Attach it rather than pasting its encoded payload into the conversation. With file/code tools, ChatGPT can reconstruct the exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the included recovery utility. Python 3.11+ is required for source recovery and execution. The prompt preserves the original version rather than silently generating a different implementation; newly built desktop binaries may differ by platform and build environment.
 
@@ -62,6 +63,12 @@ python3 scripts/setup.py --author "Your name" --skip-obsidian
 ```
 
 Keep your private library out of the public source repository. The default `data/`, `backups/`, and `exports/` directories are ignored by Git. If you choose a custom location inside the repository, add that location to `.gitignore` before committing. A private data directory outside the source checkout is also supported.
+
+## Register your engineering projects
+
+Open **Projects**, add an existing local Git checkout, and choose which documentation paths to include. **Refresh project context** creates a draft snapshot of committed sources, with commit/blob references and changed paths since the previous refresh. Existing notes and repository files remain intact. Recall prefers the latest captured snapshot; earlier snapshots remain searchable. No tunnel is required.
+
+Refresh is manual and reads committed `HEAD` only; it does not pull remote changes or import uncommitted work. Review excerpts before sharing them. See [Projects and project context](docs/projects.md) for setup, limits, CLI usage, and privacy boundaries.
 
 ## Document work and resume it later
 

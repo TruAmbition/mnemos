@@ -1,6 +1,6 @@
 [project]
 name = "mnemos-knowledge"
-version = "0.3.0"
+version = "0.4.0"
 description = "Portable engineering knowledge, context recall, and workflow planning with Obsidian"
 readme = "README.md"
 requires-python = ">=3.11"

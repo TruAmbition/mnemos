@@ -305,6 +305,17 @@ class Handler(BaseHTTPRequestHandler):
         return self._dispatch_routes(method, parsed, path)
 
     def _dispatch_routes(self, method, parsed, path):
+        if path in {'/api/projects', '/api/projects/refresh', '/api/projects/remove'}:
+            self._require_local_setup()
+            from . import projects
+            if method == 'GET' and path == '/api/projects':
+                return self._json(projects.list_projects(self.server.data_path))
+            if method == 'POST':
+                operation = {'/api/projects': projects.save_project,
+                             '/api/projects/refresh': projects.refresh_project,
+                             '/api/projects/remove': projects.remove_project}[path]
+                return self._json(operation(self.server.data_path, self._body()))
+            raise core.MnemosError('Method not supported.', 405)
         if path == '/api/setup/inspect' and method == 'POST':
             return self._inspect_setup(self._body())
         if path == '/api/setup':

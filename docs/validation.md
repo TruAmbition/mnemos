@@ -1,6 +1,14 @@
-# Version 0.3 validation
+# Version 0.4 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## Projects (0.4)
+
+The final source passed 137 Python tests and 38 JavaScript tests. Fourteen new Git tests exercised committed-only capture, unchanged working trees/indexes, source limits/exclusions and credential screening, snapshot history, preservation of human edits, latest-context recall and explicit historical handoff, revision conflicts, disconnect behavior, missing/empty/moving repositories, worktrees, disabled filesystem monitors, ignored replacement refs, and process/network environment restrictions. HTTP checks covered local-owner restrictions, origin checks, and stale-workspace rejection; JavaScript checks covered escaping project card data.
+
+In an isolated browser workspace, a synthetic local checkout was registered, refreshed, and opened as a draft with its README excerpt and commit/blob evidence. Source-selection editing showed the changed-selection state; another refresh created a separate snapshot. The page was inspected at desktop and 560-pixel widths without horizontal content overflow. The user's actual local portal was restarted on its existing workspace and the empty Projects screen opened; no real user repository was registered automatically and the separate tunnel was not stopped.
+
+The 0.4 Apple Silicon desktop bundle was rebuilt and smoke-tested with an isolated workspace: bundled CLI initialization, project registration, committed-source refresh, and inventory succeeded. It remains ad-hoc signed, not notarized. Windows/Linux packaged behavior remains untested locally. Manual refresh does not inspect uncommitted work or automatically explain code changes; screening is not comprehensive secret detection.
 
 ## Standalone reconstruction prompt
 

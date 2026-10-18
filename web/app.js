@@ -10,6 +10,7 @@
     library:'M3 4h6v7H3z M14 4h7v7h-7z M3 16h6v5H3z M14 16h7v5h-7z',
     search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
     handoff:'M3 7h12 M11 3l4 4-4 4 M21 17H9 M13 13l-4 4 4 4',
+    projects:'M3 6h7l2 2h9v12H3z M8 12h8 M12 10v6',
     connections:'M7 7h4v10H7z M15 7h4v10h-4z M3 12h4 M11 12h4 M19 12h3',
     setup:'M12 3v6 M12 15v6 M3 12h6 M15 12h6 M8 8l-3-3 M16 16l3 3 M8 16l-3 3 M16 8l3-3',
     capture:'M14 4l6 6 M3 21l5-1 13-13a2 2 0 0 0-5-5L3 15v6z',
@@ -137,7 +138,7 @@
     const links = [{id:'library',label:'Library',count:documents().length},{id:'recall',label:'Recall context'},{id:'handoff',label:'Cloud handoff'},{id:'workflows',label:'Workflows',count:workflows().length}];
     if (canWrite()) links.splice(1,0,{id:'capture',label:'Capture knowledge'});
     if (isOwner() || staticMode) links.push({id:'settings',label:staticMode ? 'About this vault' : 'Settings',divider:true});
-    if(isOwner()&&state.data.setup_available===true)links.push({id:'connections',label:'Connections'},{id:'setup',label:'Workspace setup',href:'/setup.html'});
+    if(isOwner()&&state.data.setup_available===true)links.push({id:'projects',label:'Projects'},{id:'connections',label:'Connections'},{id:'setup',label:'Workspace setup',href:'/setup.html'});
     $('#navigation').innerHTML = links.map(item => `${item.divider ? '<div class="nav-divider"></div>' : ''}<a href="${item.href||'#'+item.id}" class="nav-item${state.view===item.id ? ' active' : ''}" ${state.view===item.id?'aria-current="page"':''}>${icon(item.id)}<span>${item.label}</span>${item.count !== undefined ? `<span class="count">${item.count}</span>` : ''}</a>`).join('');
     const author = state.data.session?.author || role();
     $('#account-avatar').textContent = String(author || 'R').slice(0,1).toUpperCase();
@@ -158,7 +159,7 @@
   function route() {
     if (!state.data) return;
     const [view, id] = window.location.hash.slice(1).split('/');
-    const valid = [...(isOwner()&&state.data.setup_available?['connections']:[]),'library','recall','handoff','workflows',...(canWrite()?['capture']:[]),...((isOwner()||staticMode)?['settings']:[])];
+    const valid = [...(isOwner()&&state.data.setup_available?['connections','projects']:[]),'library','recall','handoff','workflows',...(canWrite()?['capture']:[]),...((isOwner()||staticMode)?['settings']:[])];
     state.view = valid.includes(view) ? view : 'library';
     closeOverlay();
     render();
@@ -169,11 +170,11 @@
   }
   function render() {
     updateChrome();
-    const labels = {connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
+    const labels = {projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
     document.title = `${labels[state.view]} · Mnemos`;
     if (role()==='anonymous') { renderLocked(); updateWorkspaceNotice(); return; }
-    ({connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
+    ({projects:renderProjects,connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
     updateWorkspaceNotice();
   }
   function heading(eyebrow, title, description, action='') {
@@ -568,6 +569,64 @@
     }catch(error){toast(error.message,true);button.disabled=false;button.textContent='Stop local service';}
   }
 
+  function projectCard(project) {
+    const last=project.last_refresh;
+    const label=project.needs_refresh?'Selection changed':last?'Snapshot captured':'Not refreshed yet';
+    return `<article class="panel project-card"><div class="connection-card-title">${icon('projects')}<h2>${escape(project.name)}</h2><span class="connection-status">${label}</span></div><code class="project-path">${escape(project.path)}</code><p>${last?`Captured ${escape(last.at)} · ${escape(last.branch)}<br>Commit <code>${escape(last.commit.slice(0,12))}</code> · ${last.source_count} inspected sources · ${last.changed_count} changed paths`:'Save a connection, then refresh to capture selected documentation from its committed revision.'}</p><details><summary>Source selection</summary><p>Include: ${escape(project.include.join(', '))}</p><p>Exclude: ${escape(project.exclude.join(', ')||'No additional patterns')}</p></details>${last?.warnings?.length?notice(last.warnings.join(' ')):''}<div class="project-actions"><button class="button primary small" data-action="refresh-project" data-project-id="${escape(project.id)}">${icon('recall')} Refresh project context</button>${last?`<button class="button small" data-document="${escape(last.document_id)}">Open context</button>`:''}<button class="button small" data-action="edit-project" data-project-id="${escape(project.id)}">Edit</button><button class="button text small" data-action="remove-project" data-project-id="${escape(project.id)}">Disconnect</button></div></article>`;
+  }
+  function renderProjects() {
+    $('#main').innerHTML=heading('PROJECT CONTEXT','Your projects. Remembered.','Connect local Git checkouts and capture source-backed context as they grow.')+
+      `<section class="notice">${icon('info')}<span><strong>Read committed work, preserve your notes.</strong><br>Refresh reads selected files from the local HEAD commit. It creates a new draft snapshot without pulling, pushing, running project code, or changing your repository. Uncommitted work is not imported. No tunnel or Git credentials are needed.</span></section><div class="projects-layout"><div><div id="project-list" aria-live="polite">Loading projects…</div><p class="connection-help">Refresh is manual. A captured snapshot is not continuous monitoring. Recall prefers the latest captured context for each connected project; older snapshots remain in the library. Review excerpts before sharing them with readers or cloud assistants.</p></div><aside id="project-form-slot"></aside></div>`;
+    state.projectEditing=null;
+    loadProjects();
+  }
+  async function loadProjects() {
+    try {
+      const result=await api('/api/projects');
+      if(state.view!=='projects'||state.workspaceStale)return;
+      state.projects=result.projects;state.projectDefaults=result.defaults;
+      $('#project-list').innerHTML=result.projects.length?result.projects.map(projectCard).join(''):notice('No projects connected yet. Add a local checkout to begin.');
+      renderProjectForm();
+    }catch(error){if(state.view==='projects')$('#project-list').innerHTML=notice(error.message,'error');}
+  }
+  function renderProjectForm() {
+    const slot=$('#project-form-slot');if(!slot)return;
+    const p=state.projectEditing||{name:'',path:'',...state.projectDefaults};
+    slot.innerHTML=`<form class="panel" id="project-form"><div class="panel-heading">${icon('folder')}<h2>${state.projectEditing?'Edit project':'Add a local project'}</h2></div><div class="field"><label for="project-name">Project name</label><input id="project-name" name="name" required maxlength="120" value="${escape(p.name)}" placeholder="e.g. Customer portal"></div><div class="field"><label for="project-path">Local Git checkout</label><input id="project-path" name="path" required value="${escape(p.path)}" placeholder="Absolute path to the repository root"><small>Use an existing checkout on this computer, outside other Obsidian vaults. Repository contents stay where they are.</small></div><div class="field"><label for="project-include">Documentation to include</label><textarea id="project-include" name="include" rows="4" required>${escape((p.include||[]).join('\n'))}</textarea><small>One relative path or glob per line. For example README.md or docs/*.md. Up to 12 matching text files, 6,000 characters each.</small></div><div class="field"><label for="project-exclude">Additional exclusions</label><textarea id="project-exclude" name="exclude" rows="3">${escape((p.exclude||[]).join('\n'))}</textarea><small>Hidden files, common credential paths, build output, symlinks and submodules are always excluded. Secret checks cannot catch every secret.</small></div><p class="connection-help">Saving registers your choices. Refresh separately to create a draft with excerpts, source revisions, and changed paths. Mnemos does not infer architecture or why changes were made.</p><div id="project-form-error" aria-live="polite"></div><div class="form-actions">${state.projectEditing?'<button class="button" type="button" data-action="new-project">Cancel edit</button>':''}<button class="button primary" type="submit">${state.projectEditing?'Save changes':'Add project'}</button></div></form>`;
+    $('#project-form').addEventListener('submit',saveProject);
+  }
+  async function saveProject(event) {
+    event.preventDefault();
+    const fields=Object.fromEntries(new FormData(event.target).entries());
+    const lines=value=>String(value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    const payload={name:fields.name,path:fields.path,include:lines(fields.include),exclude:lines(fields.exclude)};
+    if(state.projectEditing)Object.assign(payload,{id:state.projectEditing.id,revision:state.projectEditing.revision});
+    const button=event.target.querySelector('[type="submit"]');button.disabled=true;
+    try {
+      await api('/api/projects',{method:'POST',body:JSON.stringify(payload)});
+      if(state.view!=='projects'||state.workspaceStale)return;
+      state.projectEditing=null;await loadProjects();toast('Project saved. Refresh when you are ready to capture its context.');
+    }catch(error){if($('#project-form-error'))$('#project-form-error').innerHTML=notice(error.message,'error');}
+    finally{if(button.isConnected)button.disabled=false;}
+  }
+  function confirmRemoveProject(id) {
+    const project=(state.projects||[]).find(p=>p.id===id);if(!project)return;
+    openOverlay(`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="disconnect-title"><button class="icon-button" aria-label="Close" data-close>${icon('close')}</button><h2 id="disconnect-title">Disconnect ${escape(project.name)}?</h2><p>This removes its registration. The repository, captured snapshots, and your handwritten notes stay intact.</p><div class="form-actions"><button class="button" data-close>Keep project</button><button class="button primary" data-action="confirm-remove-project" data-project-id="${escape(id)}">Disconnect</button></div></section>`,true);
+  }
+  async function mutateProject(action,button) {
+    const project=(state.projects||[]).find(p=>p.id===button.dataset.projectId);if(!project)return;
+    const previous=button.innerHTML;button.disabled=true;button.textContent=action==='refresh'?'Reading committed sources…':'Disconnecting…';
+    try {
+      const result=await api('/api/projects/'+action,{method:'POST',body:JSON.stringify({id:project.id,revision:project.revision})});
+      if(state.view!=='projects'||state.workspaceStale)return;
+      if(result.document){state.data.documents=documents().filter(d=>d.id!==result.document.id);state.data.documents.unshift(result.document);updateChrome();}
+      if(state.projectEditing?.id===project.id)state.projectEditing=null;
+      await loadProjects();
+      toast(action==='remove'?'Project disconnected. Your notes remain.':result.unchanged?'This commit and source selection are already captured.':'Project context captured as a new draft.');
+    }catch(error){toast(error.message,true);}
+    finally{if(button.isConnected){button.disabled=false;button.innerHTML=previous;}}
+  }
+
   function renderSettings() {
     if(staticMode){
       $('#main').innerHTML=heading('PORTABLE BY DESIGN','Your knowledge. Your files.','This is a read-only preview of a Mnemos vault. The full toolkit connects the reader, your AI workflow, and an isolated Obsidian vault.')+`<div class="settings-layout"><section class="panel"><div class="panel-heading">${icon('shield')}<h2>A durable home for engineering knowledge</h2></div><p>Mnemos stores documents as ordinary Markdown files with structured metadata. Obsidian and this portal read the same knowledge.</p><div class="settings-fact"><span>Preview access</span><strong>Read only</strong></div><div class="settings-fact"><span>Knowledge items</span><strong>${documents().length}</strong></div><div class="settings-fact"><span>Workflow execution</span><strong>Reviewable plans only</strong></div><div class="settings-fact"><span>Storage</span><strong>Your own isolated vault</strong></div><div class="settings-fact"><span>Backup choices</span><strong>Local folder or rclone remote</strong></div>${notice('This preview uses example documents. It does not create a vault, connect to cloud storage, or back up your files.')}<p style="margin-bottom:0">Run the downloadable toolkit to create your own vault, choose a backup destination, and enable authoring.</p></section><section class="panel"><div class="panel-heading">${icon('knowledge')}<h2>Ready for a team</h2></div><p>Start with one author and invite more contributors as the library grows.</p><dl class="role-grid"><dt>Owner</dt><dd>Configures the vault, manages backups, and verifies documentation.</dd><dt>Author</dt><dd>Creates and updates drafts with traceable source evidence.</dd><dt>Reader</dt><dd>Finds knowledge, recalls context, and reviews workflows.</dd></dl></section></div>`;return;
@@ -634,6 +693,11 @@
     if(target.closest('#navigation')&&target.getAttribute('href').startsWith('#')){event.preventDefault();navigate(target.getAttribute('href').slice(1));return;}
     switch(target.dataset.action){
       case 'reload':load();break;
+      case 'new-project':state.projectEditing=null;renderProjectForm();break;
+      case 'edit-project':state.projectEditing=(state.projects||[]).find(p=>p.id===target.dataset.projectId);renderProjectForm();$('#project-name')?.focus();break;
+      case 'refresh-project':await mutateProject('refresh',target);break;
+      case 'remove-project':confirmRemoveProject(target.dataset.projectId);break;
+      case 'confirm-remove-project':closeOverlay();await mutateProject('remove',target);break;
       case 'test-connection':await testConnection(target);break;
       case 'stop-runtime':await stopRuntime();break;
       case 'confirm-stop-runtime':await stopRuntime(true);break;
