@@ -66,6 +66,8 @@ public struct Project: Decodable, Identifiable {
 public struct KnowledgeProject: Decodable, Identifiable {
     public let id: String; public let name: String; public let purpose: String
     public let repository_ids: [String]; public let document_count: Int
+    public let privacy: String?
+    public var privacyLabel: String { privacy == "team" ? "Approved for team sharing" : privacy == "reviewed-ai" ? "Allow reviewed AI sharing" : "Local only" }
 }
 public struct Projects: Decodable {
     public let projects: [Project]
@@ -89,6 +91,13 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate, @unchecked Sen
 public final class LocalAPI {
     public let base: URL
     private let session: URLSession
+    public var installation: String?
+    public var localKey: String? {
+        guard let installation else { return nil }
+        let folder = URL(fileURLWithPath: installation).deletingLastPathComponent()
+        let path = folder.deletingLastPathComponent().appendingPathComponent(".mnemos-access/\(folder.lastPathComponent)-\(base.port!).key")
+        return try? String(contentsOf: path, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     public init(port: Int) {
         precondition((1...65535).contains(port))
         base = URL(string: "http://127.0.0.1:\(port)")!
@@ -101,6 +110,7 @@ public final class LocalAPI {
     public func data(_ path: String, payload: [String: Any]? = nil, workspace: String? = nil) async throws -> Data {
         guard path.hasPrefix("/api/"), !path.contains("?"), !path.contains("#") else { throw LocalError("Invalid local API path.") }
         var request = URLRequest(url: base.appendingPathComponent(String(path.dropFirst())))
+        if let key = localKey { request.setValue(key, forHTTPHeaderField: "X-Mnemos-Local-Key") }
         if let payload {
             guard let workspace, !workspace.isEmpty else { throw LocalError("Reload the active workspace before making changes.") }
             request.httpMethod = "POST"

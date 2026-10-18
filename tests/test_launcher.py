@@ -42,7 +42,7 @@ class LauncherTests(unittest.TestCase):
                     patch.object(launcher.subprocess, 'Popen') as popen, patch.object(launcher.webbrowser, 'open') as browser:
                 launcher.main()
                 popen.assert_not_called()
-                browser.assert_called_once_with('http://127.0.0.1:4318')
+                self.assertTrue(browser.call_args.args[0].startswith('http://127.0.0.1:4318#local-access='))
 
     def test_different_installation_is_never_stopped_or_reused(self):
         status = {'kind': 'mnemos-local-runtime-v1', 'installation': '/other/installation.json'}

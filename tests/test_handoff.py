@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import io
 import json
 import tempfile
@@ -20,6 +21,8 @@ class HandoffTests(unittest.TestCase):
         self.note = core.save_document(self.data, {"id": "enterprise-cache", "title": "Enterprise cache",
             "body": "Cache repair " * 900, "related_ids": ["example-first-capture"], "sources": ["local:test"]})
 
+        allow_fixture(self.data)
+
     def test_bounded_pack_keeps_revisions_and_omits_full_bodies_and_config(self):
         token = core.issue_token(self.data, "owner", "Example")
         pack = build_pack(self.data, "enterprise cache", 500)
@@ -38,6 +41,7 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(core.MnemosError):
             build_pack(self.data, "enterprise", role="reader", document_ids=[self.note["id"]])
         huge = core.save_document(self.data, {"id": "huge", "title": "Huge", "body": "x" * 220000})
+        allow_fixture(self.data, [huge["id"]])
         with self.assertRaisesRegex(core.MnemosError, "200 KB"):
             build_pack(self.data, "huge", document_ids=[huge["id"]])
 

@@ -10,6 +10,8 @@ def vault_archive(data_path):
     from .core import load_config, storage_lock, vault_path
     with storage_lock(data_path):
         load_config(data_path)
+        from .privacy import full_export
+        full_export(data_path)
         return snapshot_bytes(vault_path(data_path))[0]
 
 

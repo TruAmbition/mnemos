@@ -18,7 +18,7 @@ python3 -m mnemos serve --data /absolute/path/to/private-data \
   --public-host knowledge.example.com
 ```
 
-Replace the illustrative hostname with your actual host. Preserve the original Host header and keep the raw application port private. `--require-auth` is essential behind a loopback reverse proxy because otherwise requests from that proxy inherit local-owner access. See [deployment guidance](deployment.md).
+Replace the illustrative hostname with your actual host. Preserve the original Host header and keep the raw application port private. `--require-auth` disables local launcher management for a shared deployment. Default local access now also requires a private launcher credential. See [deployment guidance](deployment.md).
 
 ## Configure the Action
 

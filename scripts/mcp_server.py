@@ -42,6 +42,14 @@ TOOLS = [
 
 
 def call_tool(data, name, arguments):
+    from mnemos import privacy, core
+    with core.storage_lock(data), privacy.audience('ai'):
+        result = _call_tool(data, name, arguments)
+        privacy.scan(result)
+        return result
+
+
+def _call_tool(data, name, arguments):
     if not isinstance(arguments, dict):
         raise ValueError('Tool arguments must be an object.')
     if name == 'search_documents':

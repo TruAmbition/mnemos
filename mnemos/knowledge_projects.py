@@ -69,6 +69,10 @@ def save(data, payload):
     with core.storage_lock(data):
         values = entries(data)
         old = _checked(data, payload) if payload.get('id') else None
+        from . import privacy
+        mode = payload.get('privacy', (old or {}).get('privacy', 'local'))
+        if mode not in privacy.MODES:
+            raise core.MnemosError('Choose a supported project privacy setting.')
         name = core._text(payload, 'name', '', 120)
         if not name or any(p['id'] != (old or {}).get('id') and p['name'].casefold() == name.casefold() for p in values):
             raise core.MnemosError('Choose a unique top-level project name.')
@@ -93,10 +97,11 @@ def save(data, payload):
             if item not in normalized:
                 normalized.append(item)
         project = {'id': old['id'] if old else 'system-' + secrets.token_hex(6), 'name': name,
-                   'purpose': core._text(payload, 'purpose', '', 4000),
+                   'privacy': mode, 'purpose': core._text(payload, 'purpose', '', 4000),
                    'terminology': core._text(payload, 'terminology', '', 4000),
                    'repository_ids': list(dict.fromkeys(ids)), 'relationships': normalized,
                    'updated': core.now()}
+        privacy.remember_memberships(data)
         _write(data, [project if old and p['id'] == old['id'] else p for p in values] + ([] if old else [project]))
         return {'knowledge_project': {**project, 'revision': revision(project)}}
 
@@ -104,6 +109,8 @@ def save(data, payload):
 def remove(data, payload):
     with core.storage_lock(data):
         project = _checked(data, payload)
+        from . import privacy
+        privacy.remember_memberships(data)
         _write(data, [p for p in entries(data) if p['id'] != project['id']])
         return {'removed': project['id'], 'notes_preserved': True, 'repositories_preserved': True}
 
@@ -139,7 +146,8 @@ def scope(documents, project_id):
 def catalog(data, role='owner', documents=None):
     docs = documents if documents is not None else core.list_documents(data, role)
     visible = {i for d in docs for i in d.get('project_ids', [])}
-    return [{'id': p['id'], 'name': p['name']} for p in entries(data) if role in {'owner', 'author'} or p['id'] in visible]
+    from .privacy import AUDIENCE
+    return [{'id': p['id'], 'name': p['name']} for p in entries(data) if (AUDIENCE.get() == 'local' and role in {'owner', 'author'}) or p['id'] in visible]
 
 
 def overview(data):
@@ -167,6 +175,8 @@ def analysis(data, payload):
                 or any(not isinstance(i, str) or i not in available for i in ids) or len(set(ids)) != len(ids)):
             raise core.MnemosError('Select 1–20 current documents from this project. Refresh repository evidence first if needed.')
         docs = [available[i] for i in ids]
+        from . import privacy
+        privacy.require(data, docs)
         sources = [{k: d.get(k) for k in ('id', 'title', 'revision', 'status', 'project', 'repository_ids', 'sources', 'body')} for d in docs]
         repositories = [{k: r.get(k, '') for k in ('id', 'name', 'responsibility')}
                         for r in core.load_config(data).get('projects', []) if r['id'] in project['repository_ids']]
@@ -192,7 +202,8 @@ def analysis(data, payload):
                   'Return one JSON draft using the shape below. Preserve project_id, repository_ids, sources, and related_ids. '
                   'The engineer will review and import it through Capture work. This does not automatically install skills or save notes.\n\n'
                   '## Return shape\n\n' + json.dumps(shape, indent=2) + '\n\n## Evidence\n\n' + evidence + '\n')
-        return {'prompt': prompt, 'source_count': len(sources), 'project_id': project['id']}
+        privacy.scan(prompt)
+        return {'prompt': prompt, 'source_count': len(sources), 'source_ids': ids, 'fingerprints': {d['id']: d['privacy']['fingerprint'] for d in docs}, 'project_id': project['id']}
 
 
 def detail(data, identifier):

@@ -24,10 +24,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def running(port):
+def running(port, base=None):
     try:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-        with opener.open(f'http://127.0.0.1:{port}/api/runtime', timeout=.5) as response:
+        from mnemos.local_access import read
+        request = urllib.request.Request(f'http://127.0.0.1:{port}/api/runtime', headers={'X-Mnemos-Local-Key': read(base or default_root(), port)})
+        with opener.open(request, timeout=.5) as response:
             value = json.loads(response.read(16384))
         return value if value.get('kind') == 'mnemos-local-runtime-v1' else None
     except (OSError, ValueError):
@@ -78,12 +80,12 @@ def main():
     if not foreground and args.port == 0:
         raise ValueError('Use a fixed port for the desktop launcher.')
     if not foreground:
-        status = running(args.port)
+        status = running(args.port, pointer.parent if pointer else data)
         for _ in range(50):
             if not status or not status.get('stopping'):
                 break
             time.sleep(.1)
-            status = running(args.port)
+            status = running(args.port, pointer.parent if pointer else data)
         if status and status.get('stopping'):
             raise ValueError('Mnemos is still stopping. Wait a moment, then reopen the app.')
         if status and not same_runtime(status, pointer, data):
@@ -109,7 +111,7 @@ def main():
                 child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=output, stderr=output,
                                          cwd=str(ROOT), close_fds=True, **options)
             for _ in range(200):
-                status = running(args.port)
+                status = running(args.port, pointer.parent if pointer else data)
                 if same_runtime(status, pointer, data):
                     break
                 if child.poll() is not None:
@@ -119,7 +121,8 @@ def main():
                 raise ValueError(f'Mnemos is taking longer than expected to start. Diagnostics: {log}. Reopen the app to retry.')
         url = f'http://127.0.0.1:{args.port}' + ('' if status.get('initialized') else '/setup.html')
         if not args.no_browser:
-            webbrowser.open(url)
+            from mnemos.local_access import browser_url, read
+            webbrowser.open(browser_url(url, read(pointer.parent if pointer else data, args.port)))
         print(f'Mnemos is running at {url}. Stop it from Connections.', flush=True)
         return
     initialized = (data / 'config.json').exists()
@@ -128,7 +131,8 @@ def main():
     url = f'http://127.0.0.1:{server.server_address[1]}' + ('' if initialized else '/setup.html')
     print(f'Mnemos: {url}\nStop from Connections or press Ctrl+C.', flush=True)
     if not args.no_browser:
-        timer = threading.Timer(.3, lambda: webbrowser.open(url))
+        from mnemos.local_access import browser_url
+        timer = threading.Timer(.3, lambda: webbrowser.open(browser_url(url, server.local_key)))
         timer.daemon = True
         timer.start()
     try:

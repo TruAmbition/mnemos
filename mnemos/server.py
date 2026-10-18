@@ -64,6 +64,9 @@ class MnemosServer(ThreadingHTTPServer):
         self.session_lock = threading.RLock()
         super().__init__(address, handler or Handler)
         port = self.server_address[1]
+        from . import local_access
+        self.local_key = local_access.create(self.installation_file.parent if self.installation_file else self.data_path, port) if self.local_owner else ''
+        self.local_cookie = f'mnemos_local_{port}'
         local_names = ["localhost", "127.0.0.1", "[::1]"] if bound_loopback else []
         self.allowed_hosts = {f"{name}:{port}" for name in local_names}
         if port == 80:
@@ -123,12 +126,16 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         if cookie:
-            self.send_header("Set-Cookie", cookie)
+            for item in (cookie if isinstance(cookie, list) else [cookie]):
+                self.send_header("Set-Cookie", item)
         if download:
             self.send_header('Content-Disposition', f'attachment; filename="{download}"')
         self.end_headers()
 
     def _json(self, payload, status=200, cookie=None):
+        from .privacy import AUDIENCE, scan
+        if status < 300 and AUDIENCE.get() != 'local':
+            scan(payload)
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self._headers(status, "application/json; charset=utf-8", len(body), cookie)
         self.wfile.write(body)
@@ -164,8 +171,17 @@ class Handler(BaseHTTPRequestHandler):
             raise core.MnemosError("Request must contain a JSON object.")
         return result
 
+    def _local_identity(self, key):
+        if (self.server.local_owner and is_loopback(self.client_address[0]) and isinstance(key, str)
+                and key and secrets.compare_digest(key, self.server.local_key)):
+            owner = core.load_config(self.server.data_path)['owner'] if (self.server.data_path / 'config.json').exists() else 'Local engineer'
+            return {'role': 'owner', 'author': owner, 'local': True}
+        return None
+
     def _identity(self):
         authorization = self.headers.get("Authorization")
+        if authorization and not (self.server.data_path / "config.json").exists():
+            return {"role": "anonymous", "author": ""}
         if authorization:
             if not authorization.startswith("Bearer "):
                 return {"role": "anonymous", "author": ""}
@@ -180,11 +196,18 @@ class Handler(BaseHTTPRequestHandler):
             with self.server.session_lock:
                 session = self.server.sessions.get(key)
                 if session and session["expires"] > time.time():
-                    return core.authenticate(self.server.data_path, session["token"]) or {"role": "anonymous", "author": ""}
+                    return core.authenticate(self.server.data_path, session.get("token", "")) or {"role": "anonymous", "author": ""}
                 self.server.sessions.pop(key, None)
             return {"role": "anonymous", "author": ""}
-        if self.server.local_owner and is_loopback(self.client_address[0]):
-            return {"role": "owner", "author": core.load_config(self.server.data_path)["owner"]}
+        key = self.headers.get('X-Mnemos-Local-Key', '')
+        if not key and self.server.local_cookie in cookies:
+            with self.server.session_lock:
+                session = self.server.sessions.get(cookies[self.server.local_cookie].value)
+                if session and session['expires'] > time.time():
+                    key = session.get('local_key', '')
+        local = self._local_identity(key)
+        if local:
+            return local
         return {"role": "anonymous", "author": ""}
 
     def _require(self, identity, roles):
@@ -197,10 +220,8 @@ class Handler(BaseHTTPRequestHandler):
             raise core.MnemosError('Setup is available only from the local owner launcher.', 403)
         if self.headers.get('Sec-Fetch-Site') == 'cross-site':
             raise core.MnemosError('Cross-site setup requests are not allowed.', 403)
-        if (self.server.data_path / 'config.json').exists():
-            self._require(self._identity(), {'owner'})
-        elif self.headers.get('Authorization'):
-            raise core.MnemosError('Initialize this local installation without a shared access token.', 403)
+        if not self._identity().get('local'):
+            raise core.MnemosError('Open Mnemos from its local launcher to sign in securely.', 403)
 
     def _workspace_guard(self, method, parsed):
         markers = [self.headers.get('X-Mnemos-Workspace'), *parse_qs(parsed.query).get('workspace', [])]
@@ -287,7 +308,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.project_monitor.wake.set()
                     if switched:
                         with self.server.session_lock:
-                            self.server.sessions.clear()
+                            self.server.sessions = {k:v for k,v in self.server.sessions.items() if v.get('local_key') == self.server.local_key}
                             self.server.login_failures.clear()
                         result['warnings'].append('Connections that explicitly specify a folder keep using that folder. Reconfigure them separately if you want them to use this workspace.')
                     result.update(self._setup_metadata(), mode=mode, previous_workspace=previous)
@@ -299,6 +320,15 @@ class Handler(BaseHTTPRequestHandler):
         self._guard(method == "POST")
         parsed = urlsplit(self.path)
         path = unquote(parsed.path)
+        if path == '/api/local-login' and method == 'POST':
+            identity = self._local_identity(self._body().get('key'))
+            if not identity:
+                raise core.MnemosError('Local access expired. Open Mnemos from its launcher again.', 401)
+            session = secrets.token_urlsafe(32)
+            with self.server.session_lock:
+                self.server.sessions = {k:v for k,v in self.server.sessions.items() if v['expires'] > time.time()}
+                self.server.sessions[session] = {'local_key': self.server.local_key, 'expires': time.time() + 43200}
+            return self._json({'signed_in': True}, cookie=[f'{self.server.local_cookie}={session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200', 'mnemos_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'])
         if path in {'/api/runtime', '/api/runtime/stop'}:
             self._require_local_setup()
             self._workspace_guard(method, parsed)
@@ -316,7 +346,9 @@ class Handler(BaseHTTPRequestHandler):
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
                 return
         self.server.assert_selection_current()
-        if path in {'/api/setup', '/api/setup/inspect', '/setup.html'}:
+        if path == '/setup.html' and not self.server.setup_enabled:
+            raise core.MnemosError('Setup is available through the local launcher only.', 403)
+        if path in {'/api/setup', '/api/setup/inspect'}:
             self._require_local_setup()
         self._workspace_guard(method, parsed)
         # Hold the pointer lock through every mutation, so a competing default
@@ -328,6 +360,37 @@ class Handler(BaseHTTPRequestHandler):
         return self._dispatch_routes(method, parsed, path)
 
     def _dispatch_routes(self, method, parsed, path):
+        from .privacy import audience
+        identity = self._identity()
+        target = 'local' if identity.get('local') else identity.get('audience', 'ai')
+        with audience(target):
+            return self._routes(method, parsed, path)
+
+    def _routes(self, method, parsed, path):
+        if path == '/api/privacy/check' and method == 'POST':
+            self._require_local_setup()
+            from . import privacy
+            payload = self._body()
+            ids = payload.get('ids', [])
+            if not isinstance(ids, list) or not ids or len(ids) > 100 or any(not isinstance(i, str) for i in ids):
+                raise core.MnemosError('Select source documents to check before sharing.')
+            docs = [core.get_document(self.server.data_path, i) for i in ids]
+            privacy.require(self.server.data_path, docs)
+            expected = payload.get('fingerprints', {})
+            if any(expected.get(d['id']) != d['privacy']['fingerprint'] for d in docs):
+                raise core.MnemosError('Sources or policies changed. Reload this preview before sharing.', 409)
+            privacy.scan(payload.get('content', ''))
+            return self._json({'allowed': True})
+        if path == '/api/privacy':
+            self._require_local_setup()
+            from . import privacy
+            if method == 'GET':
+                return self._json(privacy.overview(self.server.data_path))
+            if method == 'POST':
+                return self._json(privacy.update(self.server.data_path, self._body()))
+        # Only the launcher can manage export artifacts, settings and backups.
+        if path.startswith(('/api/skill-', '/api/backups', '/api/export', '/api/settings')):
+            self._require_local_setup()
         if path == '/api/knowledge-projects' or path.startswith('/api/knowledge-projects/'):
             self._require_local_setup()
             from . import knowledge_projects
@@ -377,6 +440,7 @@ class Handler(BaseHTTPRequestHandler):
         initialized = (self.server.data_path / 'config.json').exists()
         if not initialized:
             if path.startswith('/api/'):
+                self._require_local_setup()
                 return self._json({'initialized': False, 'setup_required': True, 'setup_url': '/setup.html',
                                    'workspace_id': self.server.workspace_id}, 409)
             if path == '/':
@@ -392,10 +456,10 @@ class Handler(BaseHTTPRequestHandler):
                                "documents": core.list_documents(data, role),
                                "knowledge_projects": catalog(data, role),
                                "workflows": core.list_workflows(data, role) if role != "anonymous" else [],
-                               "settings": core.public_settings(data, role),
+                               "settings": core.public_settings(data, role) if identity.get("local") else {},
                                "workspace_id": self.server.workspace_id,
-                               "active_workspace": self.server.active_workspace(self.server.setup_enabled and role == 'owner'),
-                               "setup_available": self.server.setup_enabled and self.server.local_owner and role == 'owner'})
+                               "active_workspace": self.server.active_workspace(bool(identity.get('local'))),
+                               "setup_available": self.server.setup_enabled and bool(identity.get('local'))})
         if method == "POST" and path == "/api/login":
             payload = self._body()
             with self.server.session_lock:
@@ -415,14 +479,17 @@ class Handler(BaseHTTPRequestHandler):
                         del self.server.sessions[key]
                 self.server.sessions[session] = {"token": token, "expires": time.time() + 43200}
             secure = "; Secure" if self.headers.get("Origin", "").startswith("https://") else ""
-            return self._json({"session": authenticated}, cookie=f"mnemos_session={session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200{secure}")
+            return self._json({"session": authenticated}, cookie=[f"mnemos_session={session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200{secure}", f"{self.server.local_cookie}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"])
         if method == "POST" and path == "/api/logout":
             self._body()
             cookies = SimpleCookie(self.headers.get("Cookie", ""))
             if "mnemos_session" in cookies:
                 with self.server.session_lock:
                     self.server.sessions.pop(cookies["mnemos_session"].value, None)
-            return self._json({"ok": True}, cookie="mnemos_session=logged-out; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200")
+            if self.server.local_cookie in cookies:
+                with self.server.session_lock:
+                    self.server.sessions.pop(cookies[self.server.local_cookie].value, None)
+            return self._json({"ok": True}, cookie=["mnemos_session=logged-out; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200", f"{self.server.local_cookie}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"])
         if path.startswith("/api/"):
             self._require(identity, {"owner", "author", "reader"})
         if path == '/api/skill-matches':

@@ -10,11 +10,11 @@ This is an optional connection for direct ChatGPT access to Mnemos. The product 
 | --- | --- | --- |
 | Local Codex or Claude client | Direct lookup and draft capture without a tunnel. | A configured, authorized local client. Its model may still process selected context in the cloud under that client's policies. |
 | Cloud file handoff | You choose the sources to share; no persistent connection. | Export, upload, review, and import a new draft. The exported snapshot can become stale. |
-| Direct ChatGPT tunnel | Current-note lookup and direct draft creation or updates with revision checks; no manual file transfers. | An online, awake host, running tunnel client, internet access, runtime credential upkeep, and approved vault-wide access. |
+| Direct ChatGPT tunnel | Current-note lookup and direct draft creation or updates with revision checks; no manual file transfers. | An online, awake host, running tunnel client, internet access, runtime credential upkeep, and explicit approvals for note versions. |
 
 OpenAI's client forwards requests and responses over outbound HTTPS; the private MCP server needs no inbound public port. Account/workspace access and enterprise outbound-connection policies still apply. [Official tunnel architecture and access requirements](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 
-**The current Mnemos connector can read every document in its dedicated vault, including drafts.** It does not restrict access to sources selected on the handoff page. Requested note content returned through its tools reaches the cloud chat. Captures and updates remain drafts for owner review.
+**Mnemos 0.10 exposes only note versions approved for AI sharing.** Local only content is blocked. Use Privacy & sharing to review, approve, or revoke notes, including drafts. Requested approved content reaches the cloud chat; capture returns a local save receipt. Restart older tunnel/MCP processes after upgrading. See [Privacy and sharing](privacy-and-sharing.md).
 
 A tunnel adds no automatic backup, vault synchronization, workflow execution, or access to other chats. This ChatGPT setup does not connect every Claude mode. It also promises no token savings: retrieved text still consumes context.
 

@@ -48,6 +48,8 @@ def request(data,payload):
         if len(docs)!=len(ids):raise core.MnemosError('A selected source is unavailable.',404)
         if payload.get('project_id') and any(payload['project_id'] not in d.get('project_ids',[]) for d in docs):raise core.MnemosError('Every selected source must belong to the chosen project.')
         if any(d['status']=='archived' for d in docs):raise core.MnemosError('Archived sources cannot be analyzed.')
+        from . import privacy
+        privacy.require(data, docs)
         sources=[{k:d.get(k) for k in ('id','title','revision','type','project','project_ids','repository_ids','status','example','body')} for d in docs]
         evidence=json.dumps(sources,ensure_ascii=False)
         if len(evidence.encode())>100_000:raise core.MnemosError('Selected sources exceed 100 KB. Choose fewer or smaller documents.')
@@ -69,7 +71,8 @@ def request(data,payload):
             'Use the exact format and request_id. Each skill needs 1–15 steps, 1–10 inputs, outputs, and validation items; use a named unknown when evidence is missing. '
             'The complete workflow must use at least two selected source documents. If evidence cannot support this, explain why rather than inventing a buildable workflow.\n\n'
             '## Return shape (replace illustrative values)\n\n'+json.dumps(schema,indent=2)+'\n\n## Selected source records\n\n'+evidence+'\n')
-        record={'id':identifier,'created':core.now(),'goal':goal,'sources':[{k:v for k,v in s.items() if k!='body'} for s in sources],'prompt':prompt}
+        record={'id':identifier,'created':core.now(),'goal':goal,'sources':[{k:v for k,v in s.items() if k!='body'} for s in sources],'prompt':prompt,'fingerprints':{d['id']:d['privacy']['fingerprint'] for d in docs}}
+        privacy.scan(record)
         _save(data,'skill-analysis',identifier,record)
         return record
 

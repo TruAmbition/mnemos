@@ -131,6 +131,8 @@ struct ManagerView: View {
             card("Mnemos on this computer") {
                 Text(model.installation).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
                 Button("Start local service") { model.action { try await model.start() } }.buttonStyle(.borderedProminent).disabled(model.busy)
+                Button("Choose existing installation…") { model.chooseInstallation() }.disabled(model.busy)
+                Text("If another installation already uses this port, select its installation.json to authenticate locally. Its notes are not moved.").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -257,6 +259,8 @@ struct ManagerView: View {
                 ForEach(model.knowledgeProjects) { system in
                     card(system.name) {
                         Text(system.purpose).foregroundStyle(.secondary)
+                        Label(system.privacyLabel, systemImage: "lock.shield")
+                        Button("Privacy & sharing") { model.openWeb("/#privacy") }
                         Text("\(system.repository_ids.count) repositories · \(system.document_count) notes").font(.caption)
                         ForEach(model.projects.filter { system.repository_ids.contains($0.id) }) { repo in
                             Label(repo.name, systemImage: "folder")

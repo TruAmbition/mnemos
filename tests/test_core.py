@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import json
 import shutil
 import tempfile
@@ -24,7 +25,9 @@ class CoreTests(unittest.TestCase):
         payload = {"id": "restart", "title": "Restart the service", "type": "runbook",
                    "body": "Check the deployment logs before restarting.", "tags": ["service"]}
         payload.update(changes)
-        return core.save_document(self.data, payload)
+        result = core.save_document(self.data, payload)
+        allow_fixture(self.data, approve=False)
+        return result
 
     def workflow(self, steps, status="verified"):
         path = core.vault_path(self.data) / "Workflows/check.json"
@@ -118,7 +121,7 @@ class CoreTests(unittest.TestCase):
 
     def test_token_secret_never_persisted_or_returned_in_settings(self):
         token = core.issue_token(self.data, "author", "Engineer")
-        self.assertEqual(core.authenticate(self.data, token), {"role": "author", "author": "Engineer"})
+        self.assertEqual(core.authenticate(self.data, token), {"role": "author", "author": "Engineer", "audience": "ai"})
         self.assertIsNone(core.authenticate(self.data, token + "bad"))
         self.assertNotIn(token, (self.data / "config.json").read_text())
         self.assertNotIn("tokens", core.public_settings(self.data, "owner"))

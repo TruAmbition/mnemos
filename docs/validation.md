@@ -136,3 +136,9 @@ The following underlying installation and connection checks were completed durin
 Adds top-level project definitions, shared repository membership, project-scoped search/recall/handoffs/skills, Flow notes, explicit system-explanation handoffs, evidence-change checks, and non-overwriting Obsidian map generation. New tests cover legacy note association without byte changes, stable IDs on rename, missing checkout registrations, scoped retrieval and skills, explanation/code provenance, exclusion of unrelated notes and local checkout paths, source freshness after commits, map/backup contents, reader visibility, and management endpoint guards. The browser round trip was checked in an isolated three-repository demo; no real notes or project registrations were added.
 
 Validation on Apple Silicon macOS: 183 Python tests, 51 JavaScript tests, and 6 Swift tests passed. The packaged native executable passed its isolated live-service lifecycle and MCP discovery checks. All five bundled skills passed the skill validator. Packaged web and skill files match the source bytes; the ad-hoc app signature and DMG checksum verified. These results do not establish operational correctness of user-generated skills or AI explanations.
+
+## 0.10 privacy and local authentication
+
+199 Python tests, 53 browser-helper tests, and six native Swift tests pass locally. Security tests cover default denial; separate AI/team audiences; transitive and shared-repository restrictions; stale/revoked approvals; new captured commits; blocked immutable skill downloads; credential scanning; static readers; unknown attachments; cloud backup denial; local login, cookie flags, Host/Origin guards, and owner-token management denial. Tests use isolated synthetic workspaces.
+
+Browser verification exercised the three-policy project editor and explicit note approval. No real project or note was approved for sharing during verification. The package remains ad-hoc signed and unnotarized.

@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import json
 import shutil
 import subprocess
@@ -77,6 +78,8 @@ class KnowledgeProjectTests(unittest.TestCase):
     def test_analysis_cites_code_and_excludes_local_paths_and_unselected_notes(self):
         snap = self.capture()
         other = core.save_document(self.data, {'title': 'Private unrelated', 'body': 'Unselected material'})
+        allow_fixture(self.data)
+        self.group = kp.overview(self.data)['knowledge_projects'][0]
         pack = kp.analysis(self.data, {**self.group, 'source_ids': [snap['id']]})
         self.assertIn('api.py', pack['prompt'])
         self.assertIn('order.created', pack['prompt'])
@@ -131,6 +134,7 @@ class KnowledgeProjectTests(unittest.TestCase):
         self.capture()
         self.assertEqual(kp.catalog(self.data, 'reader'), [])
         core.save_document(self.data, {'title': 'Verified explanation', 'body': 'Reviewed', 'status': 'verified', 'project_id': self.group['id']})
+        allow_fixture(self.data)
         self.assertEqual(kp.catalog(self.data, 'reader'), [{'id': self.group['id'], 'name': self.group['name']}])
 
 

@@ -106,6 +106,10 @@ def candidates(data, query='', include_examples=False, project_id=''):
         from .knowledge_projects import freshness
         changed = {d['id'] for d in docs if ('project-context' in d.get('tags', []) or any(isinstance(s,str) and s.startswith('mnemos') for s in d.get('sources', []))) and freshness(data,d)['changed']}
         for candidate in result:
+            from .privacy import RANK, MODES
+            policies = [indexed[s['id']]['privacy'] for s in candidate['sources'] if s['id'] in indexed]
+            mode = min((p['mode'] for p in policies), key=lambda m: RANK[m]) if policies else 'local'
+            candidate['privacy'] = {'mode': mode, 'label': MODES[mode]['label'], 'ai_approved': bool(policies) and all(p['ai_approved'] for p in policies)}
             if any(s['id'] in changed for s in candidate['sources']):
                 candidate['evidence_changed'] = True
                 candidate['readiness'] = 'review-needed'
@@ -139,6 +143,8 @@ def _resolve(data, payload):
         raise core.MnemosError('A source changed while preparing the skill. Refresh and review it again.',409)
     if any(SECRET.search('\n'.join(str(d.get(k,'')) for k in ('body','title','summary','sources'))) for d in docs):
         raise core.MnemosError('A selected source appears to contain a credential. Redact it in the source note, then refresh the suggestion.')
+    from . import privacy
+    privacy.require(data, docs)
     return candidate,docs,target,name,description.strip()
 
 
@@ -188,6 +194,8 @@ def prepare(data,payload):
             raise core.MnemosError('The complete skill exceeds 200 KB. Split the source procedure into smaller tasks.')
         # Timestamps are informative and must not cause preview/save conflicts.
         result['preview_revision']=_digest({'candidate':candidate['revision'],'name':name,'description':description,'target':target})
+        from .privacy import scan
+        scan(result)
         return result
 
 
@@ -207,7 +215,7 @@ def save(data,payload):
         return built
 
 
-def read(data,identifier):
+def read(data,identifier, for_export=True):
     if not isinstance(identifier,str) or not re.fullmatch(r'skill-[a-f0-9]{16}',identifier):
         raise core.MnemosError('Invalid skill build ID.',404)
     path=core.safe_path(Path(data),'skill-builds/'+identifier+'.json')
@@ -217,6 +225,13 @@ def read(data,identifier):
     except (ValueError,OSError) as error:raise core.MnemosError('Saved skill is unreadable.') from error
     if not isinstance(result,dict) or result.get('id')!=identifier or not isinstance(result.get('files'),dict):
         raise core.MnemosError('Saved skill format is invalid.')
+    from . import privacy
+    if for_export:
+        privacy.require(data, result.get('candidate', {}).get('sources', []))
+    if for_export and not result.get('candidate', {}).get('sources'):
+        raise core.MnemosError('Saved skill has no source evidence. Rebuild it before exporting.', 403)
+    if for_export:
+        privacy.scan(result)
     return result
 
 
@@ -226,7 +241,10 @@ def list_builds(data):
         current={c['id']:c['revision'] for c in candidates(data,include_examples=True)['candidates']}
         result=[]
         for path in sorted(folder.glob('skill-*.json')) if folder.exists() else []:
-            built=read(data,path.stem)
+            try:
+                built=read(data,path.stem, for_export=False)
+            except core.MnemosError:
+                continue
             item={k:built[k] for k in ('id','name','description','target','created')}
             source=built['candidate'];revision=current.get(source['id'])
             item.update(candidate_id=source['id'],readiness=source['readiness'],freshness='current' if revision==source['revision'] else 'changed' if revision else 'unavailable')

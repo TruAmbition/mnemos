@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import copy
 import json
 from pathlib import Path
@@ -10,6 +11,7 @@ class SkillAnalysisTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.data=Path(self.temp.name).resolve()/'data';core.initialize(self.data,'Tester')
         self.docs=[core.save_document(self.data,{'id':i,'title':i,'type':'runbook','body':'## Steps\n1. Inspect '+i+'.\n2. Verify the result.'}) for i in ['prepare-service','verify-service']]
+        allow_fixture(self.data)
         self.request=analysis.request(self.data,{'goal':'Prepare and verify a service','source_ids':[d['id'] for d in self.docs]})
         self.proposal={'format':analysis.FORMAT,'request_id':self.request['id'],'title':'Release readiness','rationale':'The preparation and verification notes describe adjacent stages.',
             'skills':[{'id':i,'title':i,'description':'Use when asked to '+i,'source_ids':[i],'inputs':['Service identifier'],'outputs':['Observed status'],

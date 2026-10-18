@@ -2,7 +2,7 @@
 
 Mnemos provides a local MCP server and a CLI. Both use the same dedicated vault. Local clients need no tunnel. A cloud chat can instead use the [file handoff workflow](cloud-handoff.md), which also needs no tunnel and grants no direct computer access. A local desktop connection does not automatically make the vault available to a separately hosted chat.
 
-Start with a local client where practical. Its model may still process selected context in the cloud under that client's policies. For frequent direct ChatGPT access, compare [tunnel benefits, operating costs, and vault-wide access](chatgpt-tunnel.md#is-a-tunnel-worth-it) with the file handoff route before configuring a connection.
+Start with a local client where practical. Its model may still process selected context in the cloud under that client's policies. For frequent direct ChatGPT access, compare [tunnel benefits, operating costs, and approved-note access](chatgpt-tunnel.md#is-a-tunnel-worth-it) with the file handoff route before configuring a connection.
 
 ## Workspace selection and pinned connections
 
@@ -103,3 +103,7 @@ Use [Cloud handoff](cloud-handoff.md) to download a bounded context pack, option
 Source IDs and revisions preserve provenance; `related_ids` lets Mnemos add links to existing Obsidian notes. A useful handoff states goals, current state, constraints, decisions, failed approaches, unknowns, next actions, and evidence. It excludes secrets and does not claim to summarize inaccessible older chats. Uploads still follow your organization's data policies.
 
 For environments that explicitly want an ongoing cloud connection, the separately configured [Secure MCP Tunnel](chatgpt-tunnel.md) and [hosted GPT Actions](cloud-chatgpt.md) routes remain optional. Selecting a setup mode or installing a skill does not create or verify either connection. Existing tunnel profiles and credentials are not altered by the Mnemos rename. A public authenticated remote MCP connector for browser-based Claude remains future work.
+
+## Privacy-aware upgrades
+
+Restart MCP/tunnel processes after upgrading to 0.10. Existing content defaults to Local only until the local owner changes its policy and approves note versions. Use `--audience ai` for assistant-facing CLI reads. Direct filesystem access is outside these controls. Refresh your installed skill copies with the new instructions; the installer preserves differing existing files, so back them up and deliberately replace only the Mnemos-owned skill folders. See [Privacy and sharing](privacy-and-sharing.md).

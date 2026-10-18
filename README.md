@@ -35,13 +35,13 @@ Search and a compact document list come first. Documents open in a dedicated rea
 
 Mnemos works alongside your existing ChatGPT, Claude, or local agent. It stores the lasting documentation and prepares context; your AI platform remains the place for AI conversations. Reading and writing notes does not require AI, an API key, or a tunnel.
 
-## Native macOS management (0.9.0)
+## Native macOS management (0.10.0)
 
-The current source adds a SwiftUI desktop manager for workspace setup, local service controls, backups, project refresh switches, and assistant connection status. It shares the HTML interface's configuration and vault. **Open Library** keeps the full documentation experience available in your browser. See [native macOS setup and build instructions](docs/native-macos.md). Download the 0.9.0 macOS package below for the native manager.
+The current source adds a SwiftUI desktop manager for workspace setup, local service controls, backups, project refresh switches, and assistant connection status. It shares the HTML interface's configuration and vault. **Open Library** keeps the full documentation experience available in your browser. See [native macOS setup and build instructions](docs/native-macos.md). Download the 0.10.0 macOS package below for the native manager.
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.9.0 reconstruction prompt](prompts/rebuild-mnemos-v0.9.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with the SwiftUI macOS manager, first-visit onboarding, skill suggestion explanations, existing-skill matching, AI workflow handoffs, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.10.0 reconstruction prompt](prompts/rebuild-mnemos-v0.10.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with the SwiftUI macOS manager, first-visit onboarding, skill suggestion explanations, existing-skill matching, AI workflow handoffs, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file carries the application source itself. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
@@ -49,7 +49,7 @@ The frozen archive excludes private notes, credentials, machine configuration, G
 
 ## Install and start
 
-Download **[Mnemos 0.9.0 for macOS (Apple Silicon)](https://github.com/TruAmbition/mnemos/releases/download/v0.9.0/Mnemos-0.9.0-macOS-arm64.dmg)**, or browse [all release downloads](https://github.com/TruAmbition/mnemos/releases/latest) for the app ZIP, source ZIP, reconstruction prompt, and checksums. The Mac package includes Python. This developer build is ad-hoc signed, not Apple Developer ID signed or notarized; follow your organization's application approval process. Intel Macs require a separate native build.
+Download **[Mnemos 0.10.0 for macOS (Apple Silicon)](https://github.com/TruAmbition/mnemos/releases/download/v0.10.0/Mnemos-0.10.0-macOS-arm64.dmg)**, or browse [all release downloads](https://github.com/TruAmbition/mnemos/releases/latest) for the app ZIP, source ZIP, reconstruction prompt, and checksums. The Mac package includes Python. This developer build is ad-hoc signed, not Apple Developer ID signed or notarized; follow your organization's application approval process. Intel Macs require a separate native build.
 
 
 **Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Use the native manager for configuration and **Open Library** for documentation. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.
@@ -125,7 +125,7 @@ Automatic suggestions use document types and procedure structure; accepted AI pr
 
 ## Connect your assistant
 
-Start with local tools. Use [file handoff](docs/cloud-handoff.md) for explicit source selection in cloud tasks; consider a tunnel for frequent authorized ChatGPT lookup and draft updates. Local clients need no tunnel, but may still use cloud models. Read [the tunnel benefits and tradeoffs](docs/chatgpt-tunnel.md#is-a-tunnel-worth-it), including its access to all dedicated-vault notes and drafts, before choosing.
+Start with local tools. Use [file handoff](docs/cloud-handoff.md) for explicit source selection in cloud tasks; consider a tunnel for frequent authorized ChatGPT lookup and draft updates. Local clients need no tunnel, but may still use cloud models. Read [the tunnel benefits and tradeoffs](docs/chatgpt-tunnel.md#is-a-tunnel-worth-it), including its access to explicitly approved note versions, before choosing.
 
 For direct Claude Desktop chats, use the [Claude Desktop installer](docs/claude-desktop.md). It connects this vault to the desktop app and preserves existing settings. Browser-based Claude uses a separate remote connection.
 
@@ -161,16 +161,16 @@ A local MCP client starts that process and communicates over standard input/outp
 
 ## Share with readers and add authors
 
-The default loopback server treats local access as the owner. For a shared computer, use `--require-auth` and an owner token. Create credentials from the host:
+The default loopback server requires the private launcher credential. Shared tokens cannot open local management controls. Classify team content in Privacy & sharing, then create workspace credentials from the host:
 
 ```sh
-python3 -m mnemos token --role reader --author "Engineer name"
-python3 -m mnemos token --role author --author "Contributing engineer"
+python3 -m mnemos token --audience team --role reader --author "Engineer name"
+python3 -m mnemos token --audience team --role author --author "Contributing engineer"
 ```
 
 Give each person their own credential through an appropriate private channel. Tokens are shown when created; keep them out of source control and documentation. Author credentials can contribute drafts. The owner reviews and verifies content before readers can see it. Updates reject stale revisions instead of silently replacing a newer edit.
 
-For remote readers, run on a controlled host behind HTTPS and an access-controlled network. A reverse-proxied instance **must** use `--require-auth`; otherwise a loopback proxy would inherit local-owner access:
+For remote readers, run on a controlled host behind HTTPS and an access-controlled network. A reverse-proxied instance **must** use `--require-auth`; this disables local launcher management on the shared endpoint:
 
 ```sh
 python3 -m mnemos serve --data /absolute/path/to/private-data \
@@ -232,3 +232,9 @@ Released under the [MIT license](LICENSE).
 ## Visual identity
 
 Mnemos uses midnight navigation, violet actions, cyan connection indicators, and light reading surfaces. Its original geometric M connects two paths to a central context core. The portal, setup, browser icon, portable reader, and desktop packages share this mark. Editable vector source is `web/mnemos-icon.svg`; native icons are in `assets/brand/`. `scripts/build_brand_assets.py` regenerates SVG, PNG, ICO and ICNS from shared geometry (Pillow is a development-only dependency). Prebuilt icons are committed, so normal use and desktop builds need no image-generation dependency.
+
+### Project privacy and local authentication (0.10)
+
+Open **Projects → Edit project** to choose **Local only**, **Allow reviewed AI sharing**, or **Approved for team sharing**. Existing content defaults to Local only. **Privacy & sharing** explains every setting and lets you approve or revoke exact note versions for connected AI and exports. Combined workflows inherit the strictest source policy.
+
+Open the browser interface through the Mnemos launcher or desktop app: local access now requires a private launcher credential. Restart older web and assistant connections after upgrading. [Read the privacy guide](docs/privacy-and-sharing.md) before enabling cloud or team sharing; notes and local backups remain unencrypted files.

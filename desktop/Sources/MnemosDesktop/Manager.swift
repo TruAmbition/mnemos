@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import MnemosKit
 
 @MainActor final class Manager: ObservableObject {
@@ -44,6 +45,7 @@ import MnemosKit
             .appendingPathComponent("Library/Application Support/Mnemos/data/installation.json").path
         installation = argument("--installation") ?? UserDefaults.standard.string(forKey: preference) ?? defaultPath
         helper = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/MnemosRuntime")
+        api.installation = installation
     }
     func action(_ operation: @escaping () async throws -> Void) {
         guard !busy else { return }
@@ -112,12 +114,27 @@ import MnemosKit
         _ = output
         try await refresh()
     }
+    func chooseInstallation() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose an existing Mnemos installation.json"
+        panel.canChooseDirectories = false; panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false; panel.allowedContentTypes = [.json]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard url.lastPathComponent == "installation.json" else {
+            error = "Select the installation.json file created by your Mnemos launcher."; return
+        }
+        installation = url.path; api.installation = url.path
+        UserDefaults.standard.set(url.path, forKey: preference)
+        runtime = nil; setup = nil; stale = true
+        action { try await self.start() }
+    }
     func adopt() async throws {
         guard let runtime, runtime.managed, let pointer = runtime.installation,
               pointer.hasPrefix("/"), URL(fileURLWithPath: pointer).lastPathComponent == "installation.json" else {
             throw LocalError("This service has no manageable default installation. Use its original launcher.")
         }
         installation = pointer
+        api.installation = pointer
         UserDefaults.standard.set(pointer, forKey: preference)
         try await refresh()
         notice = "Managing the existing installation. Its files and assistant connections stay in place."
@@ -175,8 +192,13 @@ import MnemosKit
         connections = try JSONDecoder().decode(Connections.self, from: bytes).connections
     }
     func openWeb(_ route: String = "") {
-        guard ownsService else { return }
-        NSWorkspace.shared.open(URL(string: api.base.absoluteString + route)!)
+        guard ownsService, let key = api.localKey else { return }
+        let parts = route.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+        let path = parts.first.map(String.init) ?? ""
+        let fragment = parts.count > 1 ? String(parts[1]) : ""
+        var url = URLComponents(string: api.base.absoluteString + path)!
+        url.fragment = "local-access=" + key + "&route=" + fragment
+        NSWorkspace.shared.open(url.url!)
     }
     func openVault() {
         var url = URLComponents(); url.scheme = "obsidian"; url.host = "open"

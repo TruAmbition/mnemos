@@ -5,9 +5,9 @@ Use these commands only when the current assistant has authorized filesystem acc
 These examples use the checkout's selected default workspace. An explicit `--data /absolute/path/to/private-data` pins an authorized destination and bypasses default switching.
 
 ```sh
-python3 -m mnemos search "deployment credentials"
-python3 -m mnemos get --id existing-document-id
-python3 -m mnemos capture --file ./work/capture.json
+python3 -m mnemos search --audience ai "deployment credentials"
+python3 -m mnemos get --audience ai --id existing-document-id
+python3 -m mnemos capture --audience ai --file ./work/capture.json
 ```
 
 The JSON file contains one document. Use a private scratch directory for capture input; do not commit it with the toolkit source.

@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import io
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ class SkillBuilderTests(unittest.TestCase):
         self.data=Path(self.temp.name)/'data';core.initialize(self.data,'Engineer')
         self.doc=core.save_document(self.data,{'id':'cache-repair','title':'Repair a local cache','type':'runbook','project':'Nimbus','status':'verified',
             'body':'## Prerequisites\nA disposable local cache.\n\n## Steps\n1. Inspect its current state.\n2. Use the documented rebuild command for this environment.\n\n## Validation\nConfirm the expected cache entries.\n'})
+        allow_fixture(self.data)
         self.candidate=next(c for c in skills.candidates(self.data)['candidates'] if c['id']=='document:cache-repair')
         self.payload={'candidate_id':self.candidate['id'],'revision':self.candidate['revision'],'target':'claude','name':'repair-local-cache','description':'Repair the Nimbus local cache when asked to recover its documented state.'}
 
@@ -62,7 +64,8 @@ class SkillBuilderTests(unittest.TestCase):
         self.assertTrue(all(b['freshness']=='current' for b in skills.list_builds(self.data)))
         self.doc=core.save_document(self.data,{**self.doc,'body':'A changed procedure.'})
         self.assertTrue(all(b['freshness']=='changed' for b in skills.list_builds(self.data)))
-        self.assertEqual(skills.read(self.data,built['id'])['files'],built['files'])
+        self.assertEqual(skills.read(self.data,built['id'], for_export=False)['files'],built['files'])
+        with self.assertRaises(core.MnemosError): skills.read(self.data,built['id'])
         core.save_document(self.data,{**self.doc,'status':'archived'})
         self.assertTrue(all(b['freshness']=='unavailable' for b in skills.list_builds(self.data)))
 

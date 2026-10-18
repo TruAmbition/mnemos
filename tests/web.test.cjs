@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, inProject, knowledgeProjectCard, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, inProject, knowledgeProjectCard, privacyChoices, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -545,7 +545,7 @@ test('Grouped navigation preserves role boundaries and setup availability', () =
   assert.deepEqual(plain(h.navigationGroups(false,false,false,false).primary.map(item=>item.id)), ['library','recall']);
   assert.deepEqual(plain(h.navigationGroups(false,false,true,false).manage.map(item=>item.id)), ['settings']);
   assert.ok(!ids(h.navigationGroups(true,false,false,false)).includes('setup'));
-  assert.deepEqual(plain(h.navigationGroups(true,true,false,true).manage.map(item=>item.id)), ['projects','connections','settings','setup']);
+  assert.deepEqual(plain(h.navigationGroups(true,true,false,true).manage.map(item=>item.id)), ['projects','privacy','connections','settings','setup']);
   assert.deepEqual(plain(h.navigationGroups(true,true,false,false).manage.map(item=>item.id)), ['settings']);
 });
 
@@ -574,4 +574,31 @@ test('Imported explanation keeps stable project and repository links but remains
 });
 test('Search includes the parent project name on repository evidence', () => {
   assert.ok(h.scoreDocument({title:'Orders service',project:'Orders',project_names:['Commerce platform'],body:''},'Commerce')>0);
+});
+
+
+test('Privacy choices default to local and explain AI review separately from team sharing', () => {
+  const html=h.privacyChoices();
+  assert.match(html,/value="local" checked/);
+  assert.match(html,/Allow reviewed AI sharing/);
+  assert.match(html,/Approved for team sharing/);
+  assert.match(html,/AI sharing still needs approval/);
+  assert.match(html,/most restrictive source policy/);
+  const team=h.privacyChoices('team');
+  assert.match(team,/value="team" checked/);
+  assert.doesNotMatch(team,/value="local" checked/);
+});
+
+test('Launcher credential is exchanged then removed without query or localStorage persistence', async () => {
+  const events=[];
+  const sandbox={window:{},URLSearchParams,location:{hash:'#local-access=synthetic-test&route=privacy',pathname:'/'},
+    history:{replaceState(_s,_t,path){events.push(['history',path]);}},
+    fetch:async (path, options)=>{events.push(['fetch',path,options]);return {ok:true};}};
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../web/local-access.js'),'utf8'),sandbox);
+  await sandbox.window.mnemosLocalAccess;
+  assert.deepEqual(events[0],['history','/#privacy']);
+  assert.equal(events[1][1],'/api/local-login');
+  assert.equal(events[1][2].method,'POST');
+  assert.equal(JSON.parse(events[1][2].body).key,'synthetic-test');
 });

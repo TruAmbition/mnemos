@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import http.client
 import json
 import shutil
@@ -23,6 +24,7 @@ class ServerTests(unittest.TestCase):
                 child.unlink()
         self.document = core.save_document(self.data, {"id": "approved", "title": "Approved note", "body": "Safe instructions", "status": "verified"})
         core.save_document(self.data, {"id": "draft", "title": "Unreviewed note", "body": "Unreviewed details"})
+        allow_fixture(self.data)
         self.server = MnemosServer(("127.0.0.1", 0), self.data)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -38,6 +40,8 @@ class ServerTests(unittest.TestCase):
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         self.addCleanup(connection.close)
         request_headers = dict(headers or {})
+        if not any(k in request_headers for k in ('Authorization', 'Cookie', 'X-Mnemos-Local-Key')):
+            request_headers['X-Mnemos-Local-Key'] = self.server.local_key
         request_headers.setdefault('X-Mnemos-Workspace', self.server.workspace_id)
         body = None
         if payload is not None:
@@ -50,10 +54,13 @@ class ServerTests(unittest.TestCase):
             content = json.loads(data)
         except (json.JSONDecodeError, UnicodeDecodeError):
             content = data
-        return response.status, dict(response.getheaders()), content
+        response_headers = dict(response.getheaders())
+        shared = next((v for k,v in response.getheaders() if k.lower() == 'set-cookie' and v.startswith('mnemos_session=')), None)
+        if shared: response_headers['Set-Cookie'] = shared
+        return response.status, response_headers, content
 
     def token(self, role):
-        return core.issue_token(self.data, role, role.title())
+        return core.issue_token(self.data, role, role.title(), 'team')
 
     def test_connection_dashboard_is_local_owner_only(self):
         from unittest.mock import patch
@@ -98,7 +105,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request('POST',endpoint,payload,{'Authorization':'Bearer '+self.token('reader')})[0],403)
             self.assertEqual(self.request('POST',endpoint,payload,{'X-Mnemos-Workspace':'stale'})[0],409)
             self.assertEqual(self.request('POST',endpoint,payload,{'Origin':'https://elsewhere.invalid'})[0],403)
-        self.assertEqual(self.request('POST','/api/skill-analysis/request',payload,{'Authorization':'Bearer '+self.token('author')})[0],200)
+        self.assertEqual(self.request('POST','/api/skill-analysis/request',payload,{'Authorization':'Bearer '+self.token('author')})[0],403)
 
     def test_skill_matching_is_local_owner_only_and_guarded(self):
         from unittest.mock import patch
@@ -117,6 +124,7 @@ class ServerTests(unittest.TestCase):
     def test_skill_builder_preview_save_download_and_access_boundaries(self):
         import io, zipfile
         core.save_document(self.data, {'id':'skill-source','title':'Repair test data','type':'runbook','status':'verified','body':'Inspect the local test data, then verify the result.'})
+        allow_fixture(self.data)
         status,_,result=self.request(path='/api/skill-candidates')
         self.assertEqual(status,200)
         candidate=next(c for c in result['candidates'] if c['id']=='document:skill-source')
@@ -139,7 +147,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request('POST',endpoint,payload,{'Authorization':'Bearer '+self.token('reader')})[0],403)
             self.assertEqual(self.request('POST',endpoint,payload,{'Origin':'https://elsewhere.invalid'})[0],403)
             self.assertEqual(self.request('POST',endpoint,payload,{'X-Mnemos-Workspace':'stale'})[0],409)
-        self.assertEqual(self.request('POST','/api/skill-preview',payload,{'Authorization':'Bearer '+self.token('author')})[0],200)
+        self.assertEqual(self.request('POST','/api/skill-preview',payload,{'Authorization':'Bearer '+self.token('author')})[0],403)
 
     def test_stop_requires_owner_workspace_and_managed_launcher(self):
         from unittest.mock import patch
@@ -181,7 +189,8 @@ class ServerTests(unittest.TestCase):
         payload = {"title": "Author contribution", "body": "A useful technique", "status": "draft"}
         status, _, content = self.request("POST", "/api/documents", payload, headers)
         self.assertEqual(status, 200)
-        self.assertEqual(content["document"]["author"], "Author")
+        self.assertTrue(content["document"]["saved"])
+        self.assertEqual(core.get_document(self.data,content["document"]["id"])["author"], "Author")
         self.assertEqual(self.request("POST", "/api/documents", dict(payload, status="verified"), headers)[0], 403)
 
     def test_mutations_require_json_and_same_origin(self):

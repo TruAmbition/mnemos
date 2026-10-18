@@ -61,3 +61,7 @@ python3 -m mnemos skill-candidates --project-id system-RETURNED_ID
 ```
 
 Save updates, map generation, and analysis requests require the current `id` and `revision`. Analysis also requires `source_ids` and optionally `goal`. MCP search and recall retain their existing names with an optional `project_id`; search metadata includes project IDs/names. Capture accepts `project_id`, `repository_ids`, and the `flow` document type. Restart an existing MCP process to load the updated tool schemas; no connection credentials need to change.
+
+## Privacy (0.10)
+
+New and existing projects default to Local only. Choose **Project privacy** when creating/editing a project, then use **Privacy & sharing** to review and approve exact note versions for AI. Shared repositories and workflows inherit the strictest source setting. See [Privacy and sharing](privacy-and-sharing.md) for the policy table, backup restrictions, local authentication, and filesystem limitations.

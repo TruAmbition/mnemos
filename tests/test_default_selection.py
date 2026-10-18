@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 """Default workspace selection never silently retargets pinned connections."""
 import contextlib
 import io
@@ -25,6 +26,8 @@ class DefaultSelectionTests(unittest.TestCase):
         core.initialize(self.selected, 'Selected')
         core.save_document(self.original, {'title': 'Unique original workspace', 'type': 'context', 'body': 'Original evidence.'})
         core.save_document(self.selected, {'title': 'Unique selected workspace', 'type': 'context', 'body': 'Selected evidence.'})
+        allow_fixture(self.original)
+        allow_fixture(self.selected)
         self.pointer = self.original / 'installation.json'
         onboarding.save_selection(self.pointer, self.selected)
         self.root_patch = patch.object(core, 'ROOT', self.root)

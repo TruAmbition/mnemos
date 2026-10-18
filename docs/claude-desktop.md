@@ -31,7 +31,7 @@ Or:
 
 Captures are drafts until you review them in Mnemos. A capture can only include the context Claude has available in that conversation; it cannot recover discarded or inaccessible history. Recalling a compact bundle avoids re-pasting a full transcript, but the returned text still uses conversation tokens.
 
-The local connector can read all documents in its configured vault, including drafts, and can create or update draft documentation. Connect only your own intended vault. It supplies workflow plans without running their commands.
+The local connector can read only note versions approved for AI sharing and can create draft documentation or update accessible drafts. Newly captured drafts require local approval before recall. Restart older connector processes after upgrading. Connect only your own intended vault. It supplies workflow plans without running their commands.
 
 ## Desktop, browser, and other Claude modes
 

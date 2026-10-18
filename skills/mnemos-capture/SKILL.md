@@ -33,8 +33,12 @@ Read [references/capture-format.md](references/capture-format.md) for the CLI an
 
 For updates, retrieve the current document and submit its current revision. If the revision conflicts, reread and reconcile the contents; never bypass the check or overwrite the vault directly to force a save.
 
-After capture, open the saved content or retrieve it, check its metadata and evidence, and search for its title. Report the documents created or updated, their status, and material gaps. If the assistant has no filesystem or configured connector access, return a single draft capture JSON object and instructions for review and import in Capture knowledge; do not claim it was stored.
+After capture, report the returned save receipt. If read access is permitted, inspect the saved content; otherwise explain that the local owner must review and approve the draft before AI recall. Report the documents created or updated, their status, and material gaps. If the assistant has no filesystem or configured connector access, return a single draft capture JSON object and instructions for review and import in Capture knowledge; do not claim it was stored.
 
 ## Project and repository context
 
 A top-level project groups an entire system; repositories may be shared across projects. Preserve supplied `project_id` and `repository_ids` when capturing or returning a draft. Use IDs from actual tool results or an evidence pack; never invent them. Use `flow` for an end-to-end behavior across services. Keep observed code facts, configured relationships, inference, and unknowns distinct. A snapshot of selected files is not a whole-codebase analysis.
+
+## Privacy-aware access
+
+Prefer the connected Mnemos MCP tools. They expose only approved note versions; Local only sources are unavailable. For an authorized local CLI, use `--audience ai` with `search`, `get`, `recall`, `workflow-plan`, `capture`, and `skill-candidates`. Do not retry a privacy denial through unrestricted CLI reads, raw vault files, an older connection, or edits to privacy records. Ask the owner to review the relevant note in Mnemos's Privacy & sharing page. A capture receipt confirms a local save; it does not grant permission to recall that new draft. Preserve citations so combined work inherits source restrictions. Direct filesystem access is governed by OS permissions and cannot be sandboxed by this skill.

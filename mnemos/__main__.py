@@ -63,11 +63,16 @@ def main(argv=None) -> int:
         elif command == "token":
             sub.add_argument("--role", choices=["reader", "author", "owner"], required=True)
             sub.add_argument("--author", required=True, help="Name identifying the person or agent")
+            sub.add_argument("--audience", choices=["ai", "team"], default="ai", help="AI requires note-version approval; team sees only team-approved content.")
         elif command in {"workflow-plan", "get"}:
             sub.add_argument("--id", required=True)
         elif command in {"export", "build-reader", "skills-export"}:
             sub.add_argument("--output", required=True)
+        if command in {'search', 'get', 'recall', 'workflow-plan', 'capture', 'skill-candidates'}:
+            sub.add_argument('--audience', choices=['local', 'ai', 'team'], default='local', help='Use ai for assistant-facing reads; local is trusted workstation access.')
     args = parser.parse_args(argv)
+    from . import privacy
+    audience_token = privacy.AUDIENCE.set(getattr(args, 'audience', 'local') if args.command != 'token' else 'local')
     try:
         uses_default = args.data is None
         if args.command != "skills-export":
@@ -125,7 +130,7 @@ def main(argv=None) -> int:
             return 0
         elif args.command == "capture":
             payload = json.loads(sys.stdin.read() if args.file == "-" else Path(args.file).read_text("utf-8"))
-            result = {"document": core.save_document(args.data, payload)}
+            result = {"document": core.save_document(args.data, payload, role="author" if privacy.AUDIENCE.get() != "local" else "owner")}
         elif args.command == "search":
             from .knowledge_projects import scope
             result = {"documents": scope(core.list_documents(args.data, args.role, " ".join(args.query)), args.project_id)}
@@ -136,7 +141,7 @@ def main(argv=None) -> int:
             print(recall(args.data, " ".join(args.query), args.budget, args.role, args.project_id)["context"])
             return 0
         elif args.command == "token":
-            print(core.issue_token(args.data, args.role, args.author))
+            print(core.issue_token(args.data, args.role, args.author, args.audience))
             return 0
         elif args.command == "handoff":
             from .handoff import build_pack
@@ -160,11 +165,15 @@ def main(argv=None) -> int:
         else:
             from .export import build_reader
             result = build_reader(args.data, args.output)
+        if privacy.AUDIENCE.get() != "local":
+            privacy.scan(result)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
     except (ValueError, OSError) as exc:
         print(f"Mnemos: {exc}", file=sys.stderr)
         return 1
+    finally:
+        privacy.AUDIENCE.reset(audience_token)
 
 
 if __name__ == "__main__":

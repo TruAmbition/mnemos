@@ -39,3 +39,5 @@ dist/
 /desktop-work/
 /desktop/.build/
 /desktop/.swiftpm/
+
+/.mnemos-access/

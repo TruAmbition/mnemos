@@ -28,3 +28,7 @@ Keep external mutations, deployments, messages, and credential operations within
 Report completed tasks, failed or blocked tasks, evidence, and remaining authorization or input needs. Propose or apply documentation corrections within the request using optimistic concurrency. Never convert a failed execution into verified documentation, silently change the meaning of an earlier decision, or claim a planner-only run executed the workflow.
 
 For a workflow spanning repositories, use the top-level project scope and its Flow notes. Identify the participating services and contracts at each step. A configured relationship is supporting context, not proof that the current code or credentials support execution. Preserve known project/repository IDs in captured task records.
+
+## Privacy-aware access
+
+Prefer the connected Mnemos MCP tools. They expose only approved note versions; Local only sources are unavailable. For an authorized local CLI, use `--audience ai` with `search`, `get`, `recall`, `workflow-plan`, `capture`, and `skill-candidates`. Do not retry a privacy denial through unrestricted CLI reads, raw vault files, an older connection, or edits to privacy records. Ask the owner to review the relevant note in Mnemos's Privacy & sharing page. A capture receipt confirms a local save; it does not grant permission to recall that new draft. Preserve citations so combined work inherits source restrictions. Direct filesystem access is governed by OS permissions and cannot be sandboxed by this skill.

@@ -12,7 +12,7 @@ Find the smallest useful source-backed context bundle for the current task. Use 
 Identify the project, component, error, or previous task from the user's request. Call `recall_context(query, budget)` when available. With filesystem access, run from the source directory:
 
 ```sh
-python3 -m mnemos recall "project component" --budget 6000
+python3 -m mnemos recall --audience ai "project component" --budget 6000
 ```
 
 The CLI example follows the workspace currently selected in this Mnemos checkout. Add `--data /absolute/path/to/private-data` only when that specific workspace is intended and authorized. A connected MCP client may be pinned to a different workspace; default changes do not retarget existing connections. If a default-following MCP connection reports a workspace change, restart it rather than bypassing the check.
@@ -36,3 +36,7 @@ Give concise context with source IDs or accessible document links, current revis
 ## Scope the whole system
 
 When a top-level project ID is available from search metadata, pass `project_id` to search/recall tools or `--project-id` to the CLI. This includes notes from all member repositories, including shared services. Search by project name first when the ID is unknown. Source-change warnings mean a saved explanation needs review against newer captured evidence. A fresh snapshot is still bounded to selected committed files; it is not proof that the whole codebase was analyzed.
+
+## Privacy-aware access
+
+Prefer the connected Mnemos MCP tools. They expose only approved note versions; Local only sources are unavailable. For an authorized local CLI, use `--audience ai` with `search`, `get`, `recall`, `workflow-plan`, `capture`, and `skill-candidates`. Do not retry a privacy denial through unrestricted CLI reads, raw vault files, an older connection, or edits to privacy records. Ask the owner to review the relevant note in Mnemos's Privacy & sharing page. A capture receipt confirms a local save; it does not grant permission to recall that new draft. Preserve citations so combined work inherits source restrictions. Direct filesystem access is governed by OS permissions and cannot be sandboxed by this skill.

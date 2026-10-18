@@ -88,7 +88,7 @@ def recall_documents(documents, query, budget=6000):
             continue
         sections.append(section)
         items.append({'id': doc['id'], 'title': doc['title'], 'revision': doc.get('revision', ''),
-                      'summary': summary, 'excerpt': excerpt, 'score': score, 'status': doc.get('status'), 'example': doc.get('example', False)})
+                      'summary': summary, 'excerpt': excerpt, 'privacy': doc.get('privacy', {}), 'score': score, 'status': doc.get('status'), 'example': doc.get('example', False)})
         available -= len(section)
     context = preamble + ''.join(sections)
     return {'query': query, 'budget': budget, 'characters': len(context), 'estimated_tokens': math.ceil(len(context) / 4),

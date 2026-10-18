@@ -2,7 +2,7 @@
 
 ## Local use
 
-Run one application process for the private data directory. The default binds to `127.0.0.1:4318`, and local access is treated as the owner. On a shared machine, issue an owner token and require authentication:
+Run one application process for the private data directory. The default binds to `127.0.0.1:4318`, and local owner access requires the private launcher credential. For a shared service, issue appropriately scoped tokens and require authentication:
 
 ```sh
 python3 -m mnemos token --role owner --author "Library owner"
@@ -13,7 +13,7 @@ The library is plain local data. Use operating-system account permissions and di
 
 ## Shared reader service
 
-Keep private runtime data on a controlled host. Use HTTPS for remote access, preserve the original Host header, and allow only your intended hostnames. Behind a reverse proxy, start the app with `--require-auth` even if its bind address is loopback; otherwise proxy requests would be treated as local-owner requests.
+Keep private runtime data on a controlled host. Use HTTPS for remote access, preserve the original Host header, and allow only your intended hostnames. Behind a reverse proxy, start the app with `--require-auth` even if its bind address is loopback; this disables the local management surface on the shared service.
 
 ```sh
 python3 -m mnemos serve --data /srv/mnemos-private \

@@ -43,6 +43,7 @@ final class LocalAPITests: XCTestCase {
             throw XCTSkip("Run scripts/test_desktop.py to exercise the real service in an isolated workspace.")
         }
         let api = LocalAPI(port: port)
+        api.installation = root + "/data/installation.json"
         let initial = try await api.get("/api/setup", as: Setup.self)
         XCTAssertFalse(initial.initialized)
         func apply(_ snapshot: Setup, mode: String, path: String, inspected: Setup? = nil) async throws -> Setup {

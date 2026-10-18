@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import json
 import os
 from pathlib import Path
@@ -86,6 +87,7 @@ class ProjectTests(unittest.TestCase):
         self.assertIn(second['document']['id'], ids)
         self.assertNotIn(first['document']['id'], ids)
         self.assertIn(note['id'], ids)
+        allow_fixture(self.data)
         pack = build_pack(self.data, 'Nimbus')
         self.assertNotIn(first['document']['id'], [d['id'] for d in pack['documents']])
         history = build_pack(self.data, 'Nimbus', document_ids=[first['document']['id']])

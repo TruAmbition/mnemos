@@ -46,3 +46,7 @@ With local CLI access, `python3 -m mnemos skill-analysis request --file selectio
 ## Cross-repository systems
 
 Use `--project-id` with skill candidates to scope a top-level system, or its Project scope selector in the portal. The analysis request also accepts `project_id` and requires all selected source documents to belong to it. Combine reviewed system explanations, end-to-end Flow notes, and runbooks across repositories. Define skills by task boundaries, inputs, and outputs; repository boundaries need not be skill boundaries. Resolve changed source evidence before building. Keep shared-service dependencies and approval checkpoints explicit.
+
+## Privacy-aware access
+
+Prefer the connected Mnemos MCP tools. They expose only approved note versions; Local only sources are unavailable. For an authorized local CLI, use `--audience ai` with `search`, `get`, `recall`, `workflow-plan`, `capture`, and `skill-candidates`. Do not retry a privacy denial through unrestricted CLI reads, raw vault files, an older connection, or edits to privacy records. Ask the owner to review the relevant note in Mnemos's Privacy & sharing page. A capture receipt confirms a local save; it does not grant permission to recall that new draft. Preserve citations so combined work inherits source restrictions. Direct filesystem access is governed by OS permissions and cannot be sandboxed by this skill.

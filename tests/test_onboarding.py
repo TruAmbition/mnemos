@@ -42,6 +42,8 @@ class OnboardingTests(unittest.TestCase):
         connection = http.client.HTTPConnection('127.0.0.1', server.server_address[1], timeout=5)
         self.addCleanup(connection.close)
         request_headers = dict(headers or {})
+        if not any(k in request_headers for k in ('Authorization', 'Cookie', 'X-Mnemos-Local-Key')):
+            request_headers['X-Mnemos-Local-Key'] = server.local_key
         request_headers.setdefault('X-Mnemos-Workspace', server.workspace_id)
         body = None
         if payload is not None:
@@ -470,9 +472,10 @@ class OnboardingTests(unittest.TestCase):
                 patch.object(launcher, 'MnemosServer') as server, patch.object(launcher.threading, 'Timer') as timer, \
                 patch.object(launcher.webbrowser, 'open') as browser, redirect_stdout(io.StringIO()):
             server.return_value.server_address = ('127.0.0.1', 4318)
+            server.return_value.local_key = 'fixture-launch-key'
             launcher.main()
             timer.call_args.args[1]()
-            browser.assert_called_once_with('http://127.0.0.1:4318/setup.html')
+            self.assertTrue(browser.call_args.args[0].startswith('http://127.0.0.1:4318/setup.html#local-access='))
         self.assertFalse(self.data.exists())
 
     def test_launcher_opens_existing_library(self):
@@ -484,9 +487,10 @@ class OnboardingTests(unittest.TestCase):
                 patch.object(launcher, 'MnemosServer') as server, patch.object(launcher.threading, 'Timer') as timer, \
                 patch.object(launcher.webbrowser, 'open') as browser, redirect_stdout(io.StringIO()):
             server.return_value.server_address = ('127.0.0.1', 4318)
+            server.return_value.local_key = 'fixture-launch-key'
             launcher.main()
             timer.call_args.args[1]()
-            browser.assert_called_once_with('http://127.0.0.1:4318')
+            self.assertTrue(browser.call_args.args[0].startswith('http://127.0.0.1:4318#local-access='))
 
 
 if __name__ == '__main__':

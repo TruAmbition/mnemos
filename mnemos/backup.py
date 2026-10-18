@@ -87,6 +87,9 @@ def create_backup(data_path) -> dict:
         with storage_lock(data_path):
             config = load_config(data_path)
             vault = vault_path(data_path)
+            if config.get('backup', {}).get('provider') == 'rclone':
+                from .privacy import full_export
+                full_export(data_path)
             snapshot, files = snapshot_bytes(vault)
         data_path = Path(data_path).resolve()
         settings = config.get('backup', {})

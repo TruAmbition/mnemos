@@ -259,19 +259,17 @@ def list_documents(data_path: str | Path, role: str = "owner", query: str = "") 
         if document["id"] in seen:
             raise MnemosError(f"Duplicate document id: {document['id']}")
         seen.add(document["id"])
-        if role == "reader" and document["status"] != "verified":
-            continue
         annotate(data_path, [document], definitions, repositories)
-        haystack = " ".join([document["title"], document["body"], document["summary"],
-                            document["project"], " ".join(document.get("project_names", [])), " ".join(document["tags"]) ]).casefold()
         terms = query.casefold().split()
-        if all(term in haystack for term in terms):
-            document["_score"] = sum(5 if term in document["title"].casefold() else 1 for term in terms)
-            documents.append(document)
+        document["_score"] = sum(5 if term in document["title"].casefold() else 1 for term in terms)
+        documents.append(document)
     documents.sort(key=lambda item: (item["_score"], item["updated"], item["title"]), reverse=True)
     for document in documents:
         document.pop("_score", None)
-    return documents
+    from . import privacy
+    documents = privacy.apply(data_path, documents, role)
+    terms = query.casefold().split()
+    return [d for d in documents if all(t in " ".join([d['title'], d['body'], d['summary'], d['project'], " ".join(d.get('project_names', [])), " ".join(d['tags'])]).casefold() for t in terms)]
 
 
 def get_document(data_path: str | Path, document_id: str, role: str = "owner") -> dict:
@@ -323,8 +321,14 @@ def save_document(data_path: str | Path, payload: dict, role: str = "owner", aut
         document_id = supplied_id or (re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:90] or "document") + "-" + secrets.token_hex(3)
         if not isinstance(document_id, str) or not ID_RE.fullmatch(document_id):
             raise MnemosError("Document id may contain letters, numbers, hyphens, and underscores only.")
-        documents = list_documents(data_path)
+        from . import privacy
+        target = privacy.AUDIENCE.get()
+        accessible = {d['id'] for d in list_documents(data_path)}
+        with privacy.audience('local'):
+            documents = list_documents(data_path)
         existing = next((item for item in documents if item["id"] == document_id), None)
+        if existing and target != 'local' and document_id not in accessible:
+            raise MnemosError('Document is unavailable for this connection.', 403)
         revision = payload.get("revision")
         if existing and revision != existing["revision"]:
             raise MnemosError("This document changed. Reload it before saving your edits.", 409)
@@ -368,17 +372,27 @@ def save_document(data_path: str | Path, payload: dict, role: str = "owner", aut
             if key == "related_ids" and any(not ID_RE.fullmatch(value) for value in values):
                 raise MnemosError("related_ids must contain valid document ids.")
             metadata[key] = values
+        if existing:
+            records = privacy._read(privacy._policy_path(data_path))
+            record = records.setdefault(document_id, {})
+            record['source_ids'] = sorted(set(record.get('source_ids', [])) | set(existing.get('related_ids', [])) | {ref[7:].split('@', 1)[0] for ref in existing.get('sources', []) if isinstance(ref, str) and ref.startswith('mnemos:')})
+            record['project_ids'] = sorted(set(record.get('project_ids', [])) | set(existing.get('project_ids', [])))
+            atomic_write(privacy._policy_path(data_path), json.dumps(records, indent=2))
         body = _related_links(body, metadata["related_ids"], documents, document_id)
         relative = existing["path"] if existing else f"{TYPES[kind]}/{document_id}.md"
         path = safe_path(vault, relative)
         text = "---\n" + "\n".join(f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items()) + "\n---\n\n" + body.rstrip() + "\n"
         atomic_write(path, text)
+        if target != 'local':
+            return {'id': document_id, 'status': status, 'saved': True, 'notice': 'Saved locally. Review privacy and approve the note locally before assistant recall or sharing.'}
         return _read_document(path, vault)
 
 
-def issue_token(data_path: str | Path, role: str, author: str) -> str:
+def issue_token(data_path: str | Path, role: str, author: str, audience: str = "ai") -> str:
     if role not in {"reader", "author", "owner"}:
         raise MnemosError("Unknown access role.")
+    if audience not in {"ai", "team"}:
+        raise MnemosError("Choose ai or team token access.")
     if not isinstance(author, str) or not author.strip() or len(author) > 120:
         raise MnemosError("A name of at most 120 characters is required.")
     with storage_lock(data_path):
@@ -386,7 +400,7 @@ def issue_token(data_path: str | Path, role: str, author: str) -> str:
         token = "kst_" + secrets.token_urlsafe(32)
         config.setdefault("tokens", []).append({
             "hash": hashlib.sha256(token.encode()).hexdigest(), "role": role,
-            "author": author.strip(), "created": now(),
+            "author": author.strip(), "created": now(), "audience": audience,
         })
         save_config(data_path, config)
         return token
@@ -398,7 +412,7 @@ def authenticate(data_path: str | Path, token: str) -> dict | None:
     digest = hashlib.sha256(token.encode()).hexdigest()
     for identity in load_config(data_path).get("tokens", []):
         if hmac.compare_digest(digest, identity.get("hash", "")):
-            return {"role": identity["role"], "author": identity["author"]}
+            return {"role": identity["role"], "author": identity["author"], "audience": identity.get("audience", "ai")}
     return None
 
 
@@ -425,8 +439,14 @@ def list_workflows(data_path: str | Path, role: str = "owner") -> list[dict]:
             raise MnemosError(f"Workflow steps must be objects: {path.name}")
         if any(not isinstance(step.get("document_id"), str) for step in steps):
             raise MnemosError(f"Workflow document references must be document ids: {path.name}")
-        if role == "reader" and (raw.get("status") != "verified" or any(s.get("document_id") not in visible for s in steps)):
+        from .privacy import AUDIENCE, scan
+        if (role == "reader" and raw.get("status") != "verified") or ((role == 'reader' or AUDIENCE.get() != 'local') and (not steps or any(s.get("document_id") not in visible for s in steps))):
             continue
+        if role == 'reader' or AUDIENCE.get() != 'local':
+            try:
+                scan(raw)
+            except MnemosError:
+                continue
         workflows.append({
             "id": raw["id"], "title": str(raw.get("title", raw["id"])),
             "description": str(raw.get("description", "")), "status": str(raw.get("status", "draft")),

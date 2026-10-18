@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,6 +32,7 @@ class MatchingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             data=Path(tmp)/'data';core.initialize(data,'Engineer')
             doc=core.save_document(data,{'id':'repair-cache','title':'Repair Nimbus cache','type':'runbook','body':'Inspect cache entries.'})
+            allow_fixture(data)
             candidate=next(c for c in skill_builder.candidates(data)['candidates'] if c['id']=='document:repair-cache')
             payload={'candidate_id':candidate['id'],'revision':candidate['revision'],'name':'repair-nimbus-cache','target':'claude','description':'Recover Nimbus cache entries.'}
             preview=skill_builder.prepare(data,payload)

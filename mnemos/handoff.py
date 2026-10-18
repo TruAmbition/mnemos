@@ -19,7 +19,7 @@ INSTRUCTIONS = (
     "Never include credentials or confidential material "
     "that is not approved for the receiving environment."
 )
-FIELDS = ("id", "title", "path", "revision", "status", "example", "type", "summary", "sources", "related_ids", "project", "project_id", "repository_ids")
+FIELDS = ("id", "title", "path", "revision", "status", "example", "type", "summary", "sources", "related_ids", "project", "project_id", "repository_ids", "privacy")
 
 
 def build_pack(data_path, query, budget=6000, role="owner", document_ids=None, project_id=""):
@@ -36,6 +36,8 @@ def build_pack(data_path, query, budget=6000, role="owner", document_ids=None, p
     selected = [indexed[value] for value in dict.fromkeys(document_ids)]
     recalled = recall_documents(selected or current_project_context(data_path, documents), query, budget)
     source_ids = [doc["id"] for doc in selected] if selected else [item["id"] for item in recalled["items"]]
+    from . import privacy
+    privacy.require(data_path, [indexed[i] for i in source_ids])
     sources = []
     for source_id in source_ids:
         doc = indexed[source_id]
@@ -50,6 +52,7 @@ def build_pack(data_path, query, budget=6000, role="owner", document_ids=None, p
     }
     if len(json.dumps(pack, ensure_ascii=False).encode("utf-8")) > 200_000:
         raise core.MnemosError("This pack exceeds 200 KB. Select fewer documents or use bounded excerpts.")
+    privacy.scan(pack)
     return pack
 
 

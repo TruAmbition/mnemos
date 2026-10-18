@@ -150,7 +150,7 @@ class AutomaticProjectTests(unittest.TestCase):
             conn = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=8)
             try:
                 conn.request('POST', '/api/projects/automatic', json.dumps({**self.current(), 'auto_refresh': value}),
-                             {'Content-Type': 'application/json', 'X-Mnemos-Workspace': server.workspace_id})
+                             {'Content-Type': 'application/json', 'X-Mnemos-Workspace': server.workspace_id, 'X-Mnemos-Local-Key': server.local_key})
                 response = conn.getresponse(); result = json.loads(response.read())
                 self.assertEqual(response.status, 200, result)
             finally: conn.close()

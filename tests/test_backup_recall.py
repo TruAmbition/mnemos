@@ -1,3 +1,4 @@
+from privacy_fixture import allow_fixture
 import hashlib
 import importlib.util
 import io
@@ -19,6 +20,7 @@ class BackupTests(unittest.TestCase):
         self.base = Path(self.temporary.name)
         self.data = self.base / 'data'
         initialize(self.data, 'Tester')
+        allow_fixture(self.data)
     def tearDown(self):
         self.temporary.cleanup()
     def test_roundtrip_and_no_auth_credentials(self):
@@ -91,6 +93,7 @@ class BackupTests(unittest.TestCase):
         token = issue_token(self.data, 'reader', 'Viewer')
         save_document(self.data, {'id': 'private-context', 'title': 'Private context', 'body': 'PRIVATE_UNAPPROVED_CONTENT', 'status': 'draft'})
         save_document(self.data, {'id': 'public-context', 'title': 'Approved context', 'body': 'APPROVED_CONTENT', 'status': 'verified'})
+        allow_fixture(self.data)
         output = self.base / 'reader'
         result = build_reader(self.data, output)
         payload = (output / 'data.json').read_text()
@@ -166,6 +169,7 @@ class MCPTests(unittest.TestCase):
             self.assertFalse(captured['isError'])
             document = json.loads(captured['content'][0]['text'])
             self.assertEqual(document['status'], 'draft')
+            allow_fixture(temporary)
             recalled = call('tools/call', {'name':'recall_context','arguments':{'query':'nebula'}})
             self.assertIn('Nebula context', recalled['content'][0]['text'])
             packed = json.loads(recalled['content'][0]['text'])
