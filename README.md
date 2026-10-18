@@ -33,11 +33,12 @@ The frozen archive excludes private notes, credentials, machine configuration, G
 
 ## Install and start
 
-**Version 0.7.1 is a source and reconstruction-prompt release.** The existing 0.7.0 desktop downloads do not contain these latest changes. Use the source launcher below, or build a new desktop package from this source.
+Download **[Mnemos 0.7.1 for macOS (Apple Silicon)](https://github.com/TruAmbition/mnemos/releases/download/v0.7.1/Mnemos-0.7.1-macOS-arm64.dmg)**, or browse [all release downloads](https://github.com/TruAmbition/mnemos/releases/latest) for the app ZIP, source ZIP, reconstruction prompt, and checksums. The Mac package includes Python. This developer build is ad-hoc signed, not Apple Developer ID signed or notarized; follow your organization's application approval process. Intel Macs require a separate native build.
+
 
 **Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.
 
-**Source checkout:** download this repository as a ZIP and extract it, or clone it using its actual GitHub URL. Install **Python 3.11 or later**, then double-click **start.command** on macOS or **start.cmd** on Windows. On Linux, run `python3 scripts/launch.py` from the repository folder.
+**Source checkout:** download this repository as a ZIP and extract it, or clone `https://github.com/TruAmbition/mnemos.git`. Install **Python 3.11 or later**, then double-click **start.command** on macOS or **start.cmd** on Windows. On Linux, run `python3 scripts/launch.py` from the repository folder.
 
 The launcher opens the local portal. On first use, `/setup.html` guides you through the author name, a dedicated data folder, local or cloud backup storage, Obsidian detection/installation, and an assistant mode. Choose **local tools**, **cloud file handoff**, or an optional **existing connection**. Choosing a mode does not create a cloud account connection. Setup shows the appropriate assistant commands and portable skill options; it preserves unrelated assistant settings.
 

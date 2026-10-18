@@ -4,6 +4,8 @@ Mnemos 0.3 adds a standalone desktop distribution and a local connection dashboa
 
 ## Install the desktop app
 
+Download the Apple Silicon DMG or app ZIP from [GitHub Releases](https://github.com/TruAmbition/mnemos/releases/latest). Version 0.7.1 includes the latest Getting started and skill matching features. The release also includes source and a standalone reconstruction prompt.
+
 On macOS, open the disk image, drag **Mnemos.app** into **Applications**, eject the disk image, then open Mnemos. Keep the app in its installed location: assistant connections may refer to its executable. The first start can take around 30–40 seconds while macOS loads the bundle. Subsequent opens reuse the running local service.
 
 The supplied build targets **Apple Silicon** and was tested on macOS 26.5. It is ad-hoc signed, **not Apple Developer ID signed or notarized**. Organization-managed devices may require IT approval. This is a developer distribution, not a universally trusted public release. Do not disable system protections to install it.
@@ -12,7 +14,7 @@ The repository includes a manually triggered **Desktop bundles** GitHub Actions 
 
 ## Start, reopen, and stop
 
-- Open the app to start the local service and browser. First use opens Workspace setup; an initialized workspace opens the library.
+- Open the app to start the local service and browser. First use opens Workspace setup. After setup, the first visit in a browser opens Getting started; later root launches open the Library. Explicit page links keep their destination.
 - Opening the same launcher again reuses its existing service. Closing a browser tab does not stop Mnemos.
 - Use **Connections → Stop local service**, or **Stop local service** in the setup header. Reopen the app to start again. Notes remain on disk.
 - A port occupied by a different Mnemos installation is reported rather than silently switching the user to that library. A different app on the port is left alone. Stop the intended Mnemos service from its own page, or use a different port.

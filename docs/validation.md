@@ -10,7 +10,7 @@ A disposable local instance opened Getting started on its first root visit, then
 
 The live source portal includes the Getting started guide, copyable capture/handoff prompts, suggestion explanations, and existing-skill checks. Matches use metadata and saved-build provenance, not semantic AI analysis. No user notes or installed skills are modified by matching.
 
-Version 0.7.1 is a source and reconstruction-prompt release. The existing 0.7.0 desktop binaries have not been rebuilt for this patch; use the source launcher or build a new desktop package from the recovered source. Other operating systems and fresh cloud-account integrations were not exercised for this patch.
+The 0.7.1 Apple Silicon app, ZIP, and DMG were rebuilt on October 18, 2026. The app signature and disk-image checksum verification passed. The bundled CLI initialized a disposable vault and returned skill suggestions. Packaged HTML, JavaScript, CSS, and brand assets matched the source bytes, and the app metadata reported 0.7.1. The app remains ad-hoc signed, not Apple Developer ID signed or notarized. Intel Mac, Windows, Linux desktop artifacts, and fresh cloud-account integrations were not exercised for this patch.
 
 ## AI workflow handoff and existing skills (0.7)
 
