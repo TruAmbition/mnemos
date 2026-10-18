@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -498,4 +498,18 @@ test('AI proposal review escapes steps and shows dependency and evidence gaps', 
 test('Existing skill cards filter metadata and escape untrusted paths', () => {
   const result={notice:'Read only',warnings:[],skills:[{name:'deploy',description:'Deploy safely',location:'Personal',status:'Manifest found',path:'/tmp/<script>.md'},{name:'review',description:'Review docs',location:'Project',status:'Manifest found',path:'/tmp/review'}]};
   const html=h.localSkillCards(result,'deploy');assert.match(html,/1 local skill manifests/);assert.ok(!html.includes('<script>'));assert.ok(!html.includes('/tmp/review'));assert.match(html,/&lt;script&gt;/);
+});
+
+
+test('Skill matching safely renders local metadata and scoped review handoffs', () => {
+  const evil='<img src=x onerror=alert(1)>';
+  const match={name:evil,description:evil,path:evil,location:evil,status:evil,reason:evil,kind:'local',recommendation:'extend'};
+  const rendered=h.skillMatchesView({recommendation:'extend',scanned:1,total:1,matches:[match],warnings:[evil],notice:evil});
+  assert.ok(!/<img\b/i.test(rendered));
+  assert.match(rendered,/&lt;img/);
+  const candidate={title:'Repair cache',description:'Recover entries',sources:[{id:'cache-note',revision:'revision-one'}]};
+  const prompt=h.skillMatchPrompt(candidate,{name:'repair-cache',path:'/local/SKILL.md'},'extend');
+  assert.match(prompt,/cache-note @ revision-one/);
+  assert.match(prompt,/do not overwrite or install/);
+  assert.match(prompt,/If files or tools are unavailable/);
 });

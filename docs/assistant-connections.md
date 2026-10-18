@@ -72,6 +72,18 @@ Only register a data directory the assistant should be able to read and contribu
 
 ## Available tools
 
+### Ask Mnemos to document your day
+
+The bundled **mnemos-capture** skill handles documentation and session exports. In a connected chat, ask **“Document this work in Mnemos”** or **“Export this context to Mnemos.”** Where the skill is installed, you can invoke it explicitly with `$mnemos-capture`. The connected capture tool can save drafts without the skill installed; the skill supplies the writing and evidence workflow.
+
+Copy this request at the end of a work session:
+
+> Use Mnemos to document today's work from this conversation and the evidence I supply. Search existing notes first and update matching documentation rather than creating duplicates. Capture what changed, why, setup and repeatable steps, troubleshooting and failed approaches, checks actually performed, open issues, and next actions. Create a concise work log and separate reusable runbooks or knowledge items where useful, link related notes, remove secrets, and save as drafts. Report the saved note titles and IDs. Identify missing evidence instead of assuming access to my other chats.
+
+Mnemos cannot automatically see a day's work across separate ChatGPT, Claude, and Codex chats. Run the request in each relevant chat, or provide their exported context and project evidence to one authorized assistant. Commit refresh supplies project snapshots; it does not recover the conversation's rationale.
+
+For a cloud chat without a connector, use **mnemos-handoff** with your supplied context and ask for one draft capture JSON. Import it through **Capture knowledge**, review it, and save. This path needs no tunnel. The portable skill ZIP is available from the assistant connections setup, or the skills-export CLI below. Installing instructions alone does not grant vault access.
+
 | Tool | Input | Result |
 | --- | --- | --- |
 | `search_documents` | `query` | Matching documents with current revisions |

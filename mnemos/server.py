@@ -409,6 +409,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True}, cookie="mnemos_session=logged-out; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200")
         if path.startswith("/api/"):
             self._require(identity, {"owner", "author", "reader"})
+        if path == '/api/skill-matches':
+            self._require_local_setup()
+            from . import skill_matching
+            if method == 'POST':return self._json(skill_matching.check(data,self._body()))
+            raise core.MnemosError('Unsupported skill matching operation.',405)
         if path == '/api/local-skills':
             self._require_local_setup()
             from . import skill_inventory

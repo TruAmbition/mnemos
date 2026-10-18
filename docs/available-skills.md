@@ -13,6 +13,14 @@ Mnemos finds documented procedures you could reuse as assistant skills. Open **A
 
 Building is local and requires no tunnel, model API key, or inference service. It creates instruction files; it does not execute a workflow or install anything in an account. Your existing notes remain unchanged.
 
+## Check before creating
+
+Opening **Build skill** in the local owner portal checks existing local manifests and saved Mnemos packages. **Reuse candidate** highlights an exact name or a saved package from the same suggestion with unchanged sources. **Extension candidate** highlights related names/descriptions or a previous build whose sources changed. Each match explains its evidence and provides a **Reuse prompt** or **Extend prompt** to review with your assistant. Saved packages can be opened directly; local matches show their file location.
+
+This is keyword and provenance matching, not AI analysis of the complete instructions. Compare the actual scope, environment, inputs, outputs, and checks. Reuse prompts request a suitability review; extension prompts request proposed changes for review. They do not execute, install, or overwrite a skill. Supply the referenced files to a cloud assistant that cannot read local paths.
+
+If no close match is found, the builder suggests creating a new skill, with the limits of the scan shown. Cloud-only skills must be exported to a scanned folder, and cached plugins may be inactive. Up to eight matches are displayed. After changing the proposed name or description, select **Check existing skills again**. You can still choose **Preview new skill** when a distinct skill is appropriate. Shared author sessions do not scan or expose the owner's local skill folders.
+
 ## What suggestions mean
 
 Each card includes **Why create this skill?**: the potential reuse benefit and the documented scope behind the suggestion. Existing workflow suggestions explain their task/source counts and approval checkpoints. AI suggestions show the accepted proposal’s rationale; smaller skills also describe their expected outputs. These explanations reuse saved evidence and do not make new model calls or claim measured time savings or repeated usage.

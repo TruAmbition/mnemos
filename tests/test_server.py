@@ -100,6 +100,20 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request('POST',endpoint,payload,{'Origin':'https://elsewhere.invalid'})[0],403)
         self.assertEqual(self.request('POST','/api/skill-analysis/request',payload,{'Authorization':'Bearer '+self.token('author')})[0],200)
 
+    def test_skill_matching_is_local_owner_only_and_guarded(self):
+        from unittest.mock import patch
+        from mnemos import skill_matching
+        with patch.object(skill_matching,'check',return_value={'matches':[]}) as check:
+            self.assertEqual(self.request('POST','/api/skill-matches',{})[0],200)
+            check.reset_mock()
+            for role in ['author','reader']:
+                self.assertEqual(self.request('POST','/api/skill-matches',{}, {'Authorization':'Bearer '+self.token(role)})[0],403)
+            self.assertEqual(self.request('POST','/api/skill-matches',{}, {'X-Mnemos-Workspace':'stale'})[0],409)
+            self.assertEqual(self.request('POST','/api/skill-matches',{}, {'Origin':'https://elsewhere.invalid'})[0],403)
+            self.server.setup_enabled=False
+            self.assertEqual(self.request('POST','/api/skill-matches',{})[0],403)
+            check.assert_not_called()
+
     def test_skill_builder_preview_save_download_and_access_boundaries(self):
         import io, zipfile
         core.save_document(self.data, {'id':'skill-source','title':'Repair test data','type':'runbook','status':'verified','body':'Inspect the local test data, then verify the result.'})
