@@ -1,4 +1,6 @@
-# Projects and project context
+# Repository context and refresh
+
+In 0.9, top-level projects group these repository registrations. See [project systems](project-systems.md) for membership, shared services, relationships, AI explanations, and maps. The legacy CLI/API name `projects` below continues to refer to repository registrations.
 
 Mnemos 0.5 registers existing local Git checkouts and captures selected committed documentation as source-linked context. **Projects** is the configuration section; **Project Context** is the knowledge captured from it. Refresh can be manual or automatic, with a separate opt-in for each repository. No tunnel, hosting account, or model API key is required.
 
@@ -7,7 +9,7 @@ Mnemos 0.5 registers existing local Git checkouts and captures selected committe
 1. Start the normal local launcher and open **Projects**.
 2. Enter a project name and the absolute path to its Git repository root. Git must be installed and available to Mnemos. Subfolders and symlinked paths are rejected.
 3. Review **Documentation to include** and **Additional exclusions**, one relative path or glob per line. Defaults include `README.md`, `docs/README.md`, and `docs/architecture.md`. Add relevant sources deliberately, for example `docs/runbooks/*.md`.
-4. Click **Add project**, then **Refresh project context**. With automatic refresh off (the default), registration alone does not read source bodies or create a note.
+4. Click **Add repository**, then **Refresh project context**. With automatic refresh off (the default), registration alone does not read source bodies or create a note.
 5. Open the resulting draft and review the excerpts. Ask your assistant to recall the project by name. Its existing capture tools can turn source evidence into explanations, runbooks, or decisions.
 
 The card shows the captured commit, branch at inspection, UTC capture time, inspected-source count, changed-path count, and inspection limits. These describe the last snapshot; automatic check status is shown separately. Refresh reads the checkout's committed `HEAD`; it does not pull remote commits, change branches, or include staged, unstaged, or untracked content. Use your normal Git workflow first when newer remote work should be included. Bare repositories and repositories without a locally available commit cannot produce a snapshot.

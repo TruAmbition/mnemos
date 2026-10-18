@@ -50,3 +50,7 @@ The native HTTP client connects only to `127.0.0.1`, uses ephemeral sessions, by
 For development, the app accepts `--port <fixed-port>` and `--installation /absolute/path/to/installation.json`. The Python launcher accepts the same installation option, mutually exclusive with `--data`. An installation pointer follows default switches; `--data` remains pinned. This is not remote-server management.
 
 The build is ad-hoc signed and not Apple notarized. Signing, enterprise deployment approval, and notarization remain distribution tasks. Windows/Linux retain their existing browser launchers; SwiftUI is macOS-only. The published 0.7.1 download does not include this manager; use a 0.8.0 build.
+
+## Projects in 0.9
+
+The Projects screen groups repositories under their top-level systems and opens project-scoped Library search. Repository refresh switches remain available. Use the browser project editor for membership, declared relationships, explanation handoffs, and Obsidian Canvas generation.

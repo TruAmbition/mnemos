@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mnemos knowledge and context",
-    "version": "0.2.0",
+    "version": "0.9.0",
     "description": "Recall engineering context, read source documents, and save evidence-backed drafts to a private Mnemos library. Requires a configured HTTPS host and a scoped Mnemos credential."
   },
   "servers": [
@@ -44,6 +44,15 @@
               "default": 6000
             },
             "description": "Maximum returned context characters, not tokens."
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional top-level project ID from source metadata."
           }
         ],
         "responses": {
@@ -236,6 +245,15 @@
           },
           "example": {
             "type": "boolean"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "repository_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -267,7 +285,8 @@
               "troubleshooting",
               "decision",
               "work-log",
-              "microtask"
+              "microtask",
+              "flow"
             ],
             "description": "Use context for a compact task handoff."
           },
@@ -311,6 +330,15 @@
           },
           "example": {
             "type": "boolean"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "repository_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

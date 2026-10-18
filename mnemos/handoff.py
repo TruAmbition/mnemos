@@ -19,11 +19,12 @@ INSTRUCTIONS = (
     "Never include credentials or confidential material "
     "that is not approved for the receiving environment."
 )
-FIELDS = ("id", "title", "path", "revision", "status", "example", "type", "summary", "sources", "related_ids")
+FIELDS = ("id", "title", "path", "revision", "status", "example", "type", "summary", "sources", "related_ids", "project", "project_id", "repository_ids")
 
 
-def build_pack(data_path, query, budget=6000, role="owner", document_ids=None):
-    documents = core.list_documents(data_path, role)
+def build_pack(data_path, query, budget=6000, role="owner", document_ids=None, project_id=""):
+    from .knowledge_projects import scope
+    documents = scope(core.list_documents(data_path, role), project_id)
     document_ids = document_ids or []
     if not isinstance(document_ids, list) or len(document_ids) > 20 or any(
         not isinstance(value, str) or not core.ID_RE.fullmatch(value) for value in document_ids

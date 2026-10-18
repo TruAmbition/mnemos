@@ -26,3 +26,5 @@ Keep external mutations, deployments, messages, and credential operations within
 ## Preserve the learning
 
 Report completed tasks, failed or blocked tasks, evidence, and remaining authorization or input needs. Propose or apply documentation corrections within the request using optimistic concurrency. Never convert a failed execution into verified documentation, silently change the meaning of an earlier decision, or claim a planner-only run executed the workflow.
+
+For a workflow spanning repositories, use the top-level project scope and its Flow notes. Identify the participating services and contracts at each step. A configured relationship is supporting context, not proof that the current code or credentials support execution. Preserve known project/repository IDs in captured task records.

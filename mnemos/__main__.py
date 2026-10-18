@@ -14,7 +14,7 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "knowledge-projects", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
         if command == 'skill-analysis':
@@ -25,6 +25,7 @@ def main(argv=None) -> int:
         elif command == 'skill-candidates':
             sub.add_argument('query', nargs='*')
             sub.add_argument('--include-examples', action='store_true')
+            sub.add_argument('--project-id', default='')
         elif command == 'skill-build':
             sub.add_argument('--file', required=True, help='Candidate ID, revision, target, name and description JSON')
             sub.add_argument('--save', action='store_true', help='Save the exact reviewed preview; JSON must include preview_revision')
@@ -32,6 +33,10 @@ def main(argv=None) -> int:
             sub.add_argument('--id', required=True)
             sub.add_argument('--output', required=True)
             sub.add_argument('--handoff', action='store_true')
+        elif command == "knowledge-projects":
+            sub.add_argument('action', choices=['list', 'save', 'remove', 'detail', 'analysis', 'map'], default='list', nargs='?')
+            sub.add_argument('--file', help='Project settings or reviewed id/revision/source selection JSON')
+            sub.add_argument('--id', help='Project ID for detail')
         elif command == "projects":
             sub.add_argument('action', choices=['list', 'save', 'refresh', 'remove', 'automatic'], default='list', nargs='?')
             sub.add_argument('--file', help='JSON settings, or id/revision; automatic also needs auto_refresh boolean')
@@ -47,6 +52,7 @@ def main(argv=None) -> int:
         elif command == "capture":
             sub.add_argument("--file", required=True, help="JSON capture file, or - for stdin")
         elif command in {"search", "recall", "handoff"}:
+            sub.add_argument("--project-id", default="")
             sub.add_argument("query", nargs="*", help="Words to find across document titles and contents")
             sub.add_argument("--role", choices=["owner", "author", "reader"], default="owner")
             if command in {"recall", "handoff"}:
@@ -75,7 +81,7 @@ def main(argv=None) -> int:
             result=skill_inventory.add_folder(args.data,{'path':args.folder}) if args.folder else skill_inventory.inventory(args.data)
         elif args.command == 'skill-candidates':
             from . import skill_builder
-            result=skill_builder.candidates(args.data,' '.join(args.query),args.include_examples)
+            result=skill_builder.candidates(args.data,' '.join(args.query),args.include_examples, args.project_id)
         elif args.command == 'skill-build':
             from . import skill_builder
             payload=json.loads(Path(args.file).read_text('utf-8'))
@@ -87,6 +93,15 @@ def main(argv=None) -> int:
             if output.exists():raise core.MnemosError('Choose a new export filename; existing files are not replaced.')
             core.atomic_write(output,built['handoff'] if args.handoff else skill_builder.archive(built))
             result={'output':str(output)}
+        elif args.command == "knowledge-projects":
+            from . import knowledge_projects
+            if args.action == 'list': result = knowledge_projects.overview(args.data)
+            elif args.action == 'detail': result = knowledge_projects.detail(args.data, args.id)
+            else:
+                if not args.file: raise core.MnemosError('Provide --file with JSON settings or the reviewed project revision.')
+                operation = {'save': knowledge_projects.save, 'remove': knowledge_projects.remove,
+                             'analysis': knowledge_projects.analysis, 'map': knowledge_projects.create_map}[args.action]
+                result = operation(args.data, json.loads(Path(args.file).read_text('utf-8')))
         elif args.command == "projects":
             from . import projects
             if args.action == 'list':
@@ -112,19 +127,20 @@ def main(argv=None) -> int:
             payload = json.loads(sys.stdin.read() if args.file == "-" else Path(args.file).read_text("utf-8"))
             result = {"document": core.save_document(args.data, payload)}
         elif args.command == "search":
-            result = {"documents": core.list_documents(args.data, args.role, " ".join(args.query))}
+            from .knowledge_projects import scope
+            result = {"documents": scope(core.list_documents(args.data, args.role, " ".join(args.query)), args.project_id)}
         elif args.command == "get":
             result = {"document": core.get_document(args.data, args.id)}
         elif args.command == "recall":
             from .recall import recall
-            print(recall(args.data, " ".join(args.query), args.budget, args.role)["context"])
+            print(recall(args.data, " ".join(args.query), args.budget, args.role, args.project_id)["context"])
             return 0
         elif args.command == "token":
             print(core.issue_token(args.data, args.role, args.author))
             return 0
         elif args.command == "handoff":
             from .handoff import build_pack
-            result = build_pack(args.data, " ".join(args.query), args.budget, args.role, args.id)
+            result = build_pack(args.data, " ".join(args.query), args.budget, args.role, args.id, args.project_id)
             if args.output:
                 core.atomic_write(Path(args.output).expanduser(), json.dumps(result, indent=2, ensure_ascii=False) + "\n")
                 result = {"output": str(Path(args.output).expanduser().absolute()), "mode": result["mode"]}

@@ -28,3 +28,7 @@ The file handoff produces a **new draft**: omit `id` and `revision`. Preserve so
 Provide the JSON as a downloadable file when the chat supports file creation, otherwise as one JSON code block. Tell the user to import it through Mnemos's Capture knowledge page, inspect the preview and source links, and save the draft. Do not say it was stored in Obsidian or Mnemos until an actual successful local import or connected capture confirms that.
 
 Use an MCP capture or local CLI only if the current assistant actually has an authorized connection or filesystem access to the intended installation. A path written in an attachment is not access to that computer. No connection is needed to produce the portable draft. If a connected save is requested and available, inspect its current tool schema and read the target before updating.
+
+## Project and repository context
+
+A top-level project groups an entire system; repositories may be shared across projects. Preserve supplied `project_id` and `repository_ids` when capturing or returning a draft. Use IDs from actual tool results or an evidence pack; never invent them. Use `flow` for an end-to-end behavior across services. Keep observed code facts, configured relationships, inference, and unknowns distinct. A snapshot of selected files is not a whole-codebase analysis.

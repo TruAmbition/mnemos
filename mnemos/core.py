@@ -25,7 +25,7 @@ ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$")
 TYPES = {
     "runbook": "Runbooks", "knowledge-item": "Knowledge", "knowledge": "Knowledge",
     "troubleshooting": "Troubleshooting", "decision": "Decisions", "work-log": "Work Logs",
-    "micro-task": "Microtasks", "microtask": "Microtasks", "skill": "Skills", "context": "Contexts",
+    "micro-task": "Microtasks", "microtask": "Microtasks", "skill": "Skills", "context": "Contexts", "flow": "Flows",
 }
 STATUSES = {"draft", "verified", "archived"}
 
@@ -236,6 +236,8 @@ def _read_document(path: Path, vault: Path) -> dict:
         "summary": str(meta.get("summary", "")), "body": body,
         "revision": hashlib.sha256(raw).hexdigest(), "example": meta.get("example", False) is True,
         "sources": meta.get("sources", []) if isinstance(meta.get("sources", []), list) else [],
+        "project_id": str(meta.get("project_id", "")),
+        "repository_ids": [i for i in meta.get("repository_ids", []) if isinstance(i, str) and ID_RE.fullmatch(i)] if isinstance(meta.get("repository_ids", []), list) else [],
         "related_ids": meta.get("related_ids", []) if isinstance(meta.get("related_ids", []), list) else [],
     }
 
@@ -243,6 +245,9 @@ def _read_document(path: Path, vault: Path) -> dict:
 def list_documents(data_path: str | Path, role: str = "owner", query: str = "") -> list[dict]:
     load_config(data_path)
     vault = vault_path(data_path)
+    from .knowledge_projects import annotate, entries
+    definitions = entries(data_path)
+    repositories = load_config(data_path).get('projects', [])
     documents, seen = [], set()
     if role not in {"owner", "author", "reader"}:
         return []
@@ -256,8 +261,9 @@ def list_documents(data_path: str | Path, role: str = "owner", query: str = "") 
         seen.add(document["id"])
         if role == "reader" and document["status"] != "verified":
             continue
+        annotate(data_path, [document], definitions, repositories)
         haystack = " ".join([document["title"], document["body"], document["summary"],
-                            document["project"], " ".join(document["tags"]) ]).casefold()
+                            document["project"], " ".join(document.get("project_names", [])), " ".join(document["tags"]) ]).casefold()
         terms = query.casefold().split()
         if all(term in haystack for term in terms):
             document["_score"] = sum(5 if term in document["title"].casefold() else 1 for term in terms)
@@ -347,6 +353,14 @@ def save_document(data_path: str | Path, payload: dict, role: str = "owner", aut
             "verified": now() if status == "verified" else "",
             "summary": _text(payload, "summary", "", 2000), "example": payload.get("example", False) is True,
         }
+        project_id = _text(payload, 'project_id', existing.get('project_id', '') if existing else '', 120)
+        if project_id and not ID_RE.fullmatch(project_id):
+            raise MnemosError('Use a valid top-level project ID.')
+        repository_ids = payload.get('repository_ids', existing.get('repository_ids', []) if existing else [])
+        if not isinstance(repository_ids, list) or len(repository_ids) > 100 or any(not isinstance(i, str) or not ID_RE.fullmatch(i) for i in repository_ids):
+            raise MnemosError('Use up to 100 valid repository IDs.')
+        metadata['project_id'] = project_id
+        metadata['repository_ids'] = list(dict.fromkeys(repository_ids))
         for key in ("sources", "related_ids"):
             values = payload.get(key, existing.get(key, []) if existing else [])
             if not isinstance(values, list) or len(values) > 100 or any(not isinstance(value, str) or len(value) > 2000 for value in values):

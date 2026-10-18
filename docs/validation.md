@@ -130,3 +130,9 @@ The following underlying installation and connection checks were completed durin
 - Retrieval is keyword-based. Character budgets are enforced; token counts are estimates rather than tokenizer measurements.
 - Snapshot hashes detect corruption; they are not authenticity signatures. Cloud encryption depends on the selected rclone remote. Local vault and ZIP files are unencrypted.
 - Team reader hosting and a public source repository have not been deployed or created.
+
+## Project systems (0.9.0)
+
+Adds top-level project definitions, shared repository membership, project-scoped search/recall/handoffs/skills, Flow notes, explicit system-explanation handoffs, evidence-change checks, and non-overwriting Obsidian map generation. New tests cover legacy note association without byte changes, stable IDs on rename, missing checkout registrations, scoped retrieval and skills, explanation/code provenance, exclusion of unrelated notes and local checkout paths, source freshness after commits, map/backup contents, reader visibility, and management endpoint guards. The browser round trip was checked in an isolated three-repository demo; no real notes or project registrations were added.
+
+Validation on Apple Silicon macOS: 183 Python tests, 51 JavaScript tests, and 6 Swift tests passed. The packaged native executable passed its isolated live-service lifecycle and MCP discovery checks. All five bundled skills passed the skill validator. Packaged web and skill files match the source bytes; the ad-hoc app signature and DMG checksum verified. These results do not establish operational correctness of user-generated skills or AI explanations.

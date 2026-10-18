@@ -252,9 +252,21 @@ struct ManagerView: View {
     }
     var projects: some View {
         VStack(alignment: .leading, spacing: 22) {
-            heading("Projects", "Keep your documentation current with local commits.")
+            heading("Projects", "Understand your systems across their apps and services.")
             if model.initialized {
-                if model.projects.isEmpty { card("No projects connected") { Text("Add an existing local Git checkout in the library to start capturing project context.").foregroundStyle(.secondary) } }
+                ForEach(model.knowledgeProjects) { system in
+                    card(system.name) {
+                        Text(system.purpose).foregroundStyle(.secondary)
+                        Text("\(system.repository_ids.count) repositories · \(system.document_count) notes").font(.caption)
+                        ForEach(model.projects.filter { system.repository_ids.contains($0.id) }) { repo in
+                            Label(repo.name, systemImage: "folder")
+                        }
+                        Button("Search this project") { model.openWeb("/#library/" + system.id) }
+                    }
+                }
+                if model.knowledgeProjects.isEmpty { Text("Create a top-level project in Library, then assign its repositories. Existing checkouts are preserved.").foregroundStyle(.secondary) }
+                Text("Repository refresh").font(.headline)
+                if model.projects.isEmpty { card("No repositories connected") { Text("Add an existing local Git checkout in the library to start capturing project context.").foregroundStyle(.secondary) } }
                 ForEach(model.projects) { project in
                     card(project.name) {
                         Text(project.path).font(.caption).textSelection(.enabled)

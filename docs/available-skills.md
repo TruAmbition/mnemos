@@ -2,6 +2,10 @@
 
 Mnemos finds documented procedures you could reuse as assistant skills. Open **Available skills** in the local portal. Owner and author accounts can build; readers and the static reader cannot access private generated packages.
 
+## Scope a system workflow
+
+Use the Project scope selector or **Projects → Find skills** to combine sources across the repositories in a top-level project. Reviewed system explanations and End-to-end flow notes can supply context for AI workflow discovery. Changed evidence behind a source explanation requires review before new skill builds. See [project systems](project-systems.md).
+
 ## Build a skill
 
 1. Find a task or project. Review the source documents shown on a suggestion.

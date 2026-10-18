@@ -32,3 +32,7 @@ When a client has no local filesystem or configured connector, explain that limi
 ## Return a usable handoff
 
 Give concise context with source IDs or accessible document links, current revisions where needed, and unresolved questions that affect the next action. Open a full source rather than repeatedly enlarging the entire bundle. Save subsequent changes with the capture workflow only when documenting them is requested or authorized.
+
+## Scope the whole system
+
+When a top-level project ID is available from search metadata, pass `project_id` to search/recall tools or `--project-id` to the CLI. This includes notes from all member repositories, including shared services. Search by project name first when the ID is unknown. Source-change warnings mean a saved explanation needs review against newer captured evidence. A fresh snapshot is still bounded to selected committed files; it is not proof that the whole codebase was analyzed.

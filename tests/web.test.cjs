@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, inProject, knowledgeProjectCard, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -556,4 +556,22 @@ test('Focused reading hides only an identical leading title without mutating not
   for(const body of ['# Different title\nKeep this','## Deploy the service\nKeep this','Intro\n# Deploy the service','```\n# Deploy the service\n```']) {
     assert.equal(h.readingBody({title:doc.title,body}),body);
   }
+});
+
+
+test('Top-level project membership supports explicit and shared repository context', () => {
+  assert.equal(h.inProject({project_ids:['system-a','system-b']}, 'system-b'),true);
+  assert.equal(h.inProject({project_id:'system-a'}, 'system-a'),true);
+  assert.equal(h.inProject({project_ids:['system-a']}, 'system-b'),false);
+  assert.equal(h.inProject({}, ''),true);
+});
+test('Imported explanation keeps stable project and repository links but remains a draft', () => {
+  const imported=h.parseImportedDocument(JSON.stringify({title:'System',type:'flow',status:'verified',project_id:'system-a',repository_ids:['project-a','project-b'],body:'Flow'}),'response.json');
+  assert.equal(imported.project_id,'system-a');
+  assert.deepEqual(plain(imported.repository_ids),['project-a','project-b']);
+  assert.equal(imported.type,'flow');
+  assert.equal(imported.status,'draft');
+});
+test('Search includes the parent project name on repository evidence', () => {
+  assert.ok(h.scoreDocument({title:'Orders service',project:'Orders',project_names:['Commerce platform'],body:''},'Commerce')>0);
 });

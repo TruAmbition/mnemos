@@ -190,3 +190,15 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   .library-toolbar{align-items:start}.library-filters{flex-direction:column}
   .breadcrumb .slash{display:none}
 }
+
+/* Projects describe systems; repository controls remain secondary. */
+.system-card { margin-bottom: 22px; }
+.system-members { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; margin: 20px 0; border-top: 1px solid var(--border); padding-top: 18px; }
+.system-members > div { padding: 12px; border-left: 2px solid #8b7cf8; background: rgba(139,124,248,.04); }
+.system-members small { display: block; margin-top: 6px; line-height: 1.5; }
+.system-editor { width: min(840px,96vw); max-height: 90vh; overflow: auto; }
+.relationship-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.relationship-row label { display: grid; gap: 6px; font-size: 12px; }
+.relationship-description-label { grid-column: 1 / -1; }
+.repository-settings > summary { font-size: 18px; margin: 22px 0; cursor: pointer; }
+@media(max-width:720px) { .relationship-row { grid-template-columns: 1fr; } .system-card .connection-card-title { flex-wrap: wrap; } }

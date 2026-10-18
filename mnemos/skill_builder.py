@@ -28,7 +28,7 @@ def _digest(value):
 
 
 def _metadata(doc):
-    return {key: doc.get(key) for key in ('id', 'title', 'revision', 'status', 'example', 'type', 'project')}
+    return {key: doc.get(key) for key in ('id', 'title', 'revision', 'status', 'example', 'type', 'project', 'project_ids', 'repository_ids')}
 
 
 def _short_text(value, limit=360):
@@ -70,7 +70,7 @@ def _candidate(key, title, docs, reason, workflow=None):
             'buildable': len(docs) <= MAX_SOURCES and sum(len(d['body'].encode()) for d in docs) <= MAX_BYTES}
 
 
-def candidates(data, query='', include_examples=False):
+def candidates(data, query='', include_examples=False, project_id=''):
     if not isinstance(query, str) or len(query)>1000:
         raise core.MnemosError('Use a search phrase under 1,000 characters.')
     with core.storage_lock(data):
@@ -80,7 +80,7 @@ def candidates(data, query='', include_examples=False):
         for doc in docs:
             procedural = doc['type'] in {'runbook','troubleshooting','microtask','skill'}
             steps = len(re.findall(r'^\s*\d+[.)]\s+\S', doc['body'], re.M))
-            if not procedural and not (steps >= 2 and re.search(r'(?im)^#{1,4}\s+(?:steps|procedure|workflow)\b', doc['body'])):
+            if not procedural and not (steps >= 2 and re.search(r'(?im)^#{1,4}\s+(?:steps|flow steps|procedure|workflow)\b', doc['body'])):
                 continue
             result.append(_candidate('document:'+doc['id'], doc['title'], [doc],
                 'A documented '+doc['type'].replace('-', ' ')+' can guide a repeated task.' if procedural else 'Contains a procedure heading and multiple numbered steps.'))
@@ -100,6 +100,17 @@ def candidates(data, query='', include_examples=False):
         from . import skill_analysis
         proposed, proposal_warnings=skill_analysis.candidates(data)
         result.extend(proposed);warnings.extend(proposal_warnings)
+        if project_id:
+            allowed = {d['id'] for d in docs if project_id in d.get('project_ids', [])}
+            result = [c for c in result if all(s['id'] in allowed for s in c['sources'])]
+        from .knowledge_projects import freshness
+        changed = {d['id'] for d in docs if ('project-context' in d.get('tags', []) or any(isinstance(s,str) and s.startswith('mnemos') for s in d.get('sources', []))) and freshness(data,d)['changed']}
+        for candidate in result:
+            if any(s['id'] in changed for s in candidate['sources']):
+                candidate['evidence_changed'] = True
+                candidate['readiness'] = 'review-needed'
+                candidate['why'] = {**candidate['why'], 'evidence': 'Saved evidence has changed since a source explanation was written. Review and update that explanation before building. ' + candidate['why']['evidence']}
+                candidate['buildable'] = False
         terms=re.findall(r'[\w-]+',query.casefold())
         result=[c for c in result if (include_examples or not c['example']) and all(t in (c['title']+' '+c['project']+' '+c['reason']).casefold() for t in terms)]
         result.sort(key=lambda c: ({'verified-sources':0,'review-needed':1,'example':2}[c['readiness']],c['title'].casefold(),c['id']))
@@ -113,6 +124,7 @@ def _resolve(data, payload):
     if not candidate:raise core.MnemosError('This suggestion is no longer available. Refresh Available skills.',404)
     if candidate['revision']!=payload.get('revision'):
         raise core.MnemosError('Source documentation or workflow changed. Refresh and review this suggestion again.',409)
+    if candidate.get('evidence_changed'):raise core.MnemosError('Evidence behind a source explanation changed. Review and update that note before building a skill.',409)
     if not candidate['buildable']:raise core.MnemosError('Choose a smaller procedure: a skill supports up to 20 sources and 200 KB of source text.')
     target=payload.get('target')
     if target not in TARGETS:raise core.MnemosError('Choose ChatGPT or Claude.')

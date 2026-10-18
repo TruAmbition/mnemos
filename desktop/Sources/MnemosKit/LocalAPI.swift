@@ -63,7 +63,14 @@ public struct Connections: Decodable { public let connections: [Connection] }
 public struct Project: Decodable, Identifiable {
     public let id: String; public let name: String; public let path: String; public let auto_refresh: Bool
 }
-public struct Projects: Decodable { public let projects: [Project] }
+public struct KnowledgeProject: Decodable, Identifiable {
+    public let id: String; public let name: String; public let purpose: String
+    public let repository_ids: [String]; public let document_count: Int
+}
+public struct Projects: Decodable {
+    public let projects: [Project]
+    public let knowledge_projects: [KnowledgeProject]?
+}
 public struct Backups: Decodable { public let backups: [BackupRecord] }
 public struct BackupRecord: Decodable, Identifiable {
     public var id: String { created + (path ?? "") }

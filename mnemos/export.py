@@ -24,7 +24,8 @@ def build_reader(data_path, output):
     with storage_lock(data_path):
         documents = list_documents(data_path, role='reader')
         workflows = list_workflows(data_path, role='reader')
-    payload = {'app': {'name': 'Mnemos', 'version': __version__}, 'session': {'role': 'reader', 'author': 'Reader'},
+    from .knowledge_projects import catalog
+    payload = {'knowledge_projects': catalog(data_path, 'reader', documents), 'app': {'name': 'Mnemos', 'version': __version__}, 'session': {'role': 'reader', 'author': 'Reader'},
                'documents': documents, 'workflows': workflows,
                'settings': {}, 'static': True, 'sample': all(d.get('example') for d in documents)}
     output.mkdir(parents=True, exist_ok=True)

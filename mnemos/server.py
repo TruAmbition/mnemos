@@ -328,6 +328,20 @@ class Handler(BaseHTTPRequestHandler):
         return self._dispatch_routes(method, parsed, path)
 
     def _dispatch_routes(self, method, parsed, path):
+        if path == '/api/knowledge-projects' or path.startswith('/api/knowledge-projects/'):
+            self._require_local_setup()
+            from . import knowledge_projects
+            if method == 'GET':
+                if path == '/api/knowledge-projects':
+                    return self._json(knowledge_projects.overview(self.server.data_path))
+                return self._json(knowledge_projects.detail(self.server.data_path, path.rsplit('/', 1)[1]))
+            operations = {'/api/knowledge-projects': knowledge_projects.save,
+                          '/api/knowledge-projects/remove': knowledge_projects.remove,
+                          '/api/knowledge-projects/analysis': knowledge_projects.analysis,
+                          '/api/knowledge-projects/map': knowledge_projects.create_map}
+            if method == 'POST' and path in operations:
+                return self._json(operations[path](self.server.data_path, self._body()))
+            raise core.MnemosError('Project route or method not supported.', 405)
         if path in {'/api/projects', '/api/projects/refresh', '/api/projects/remove', '/api/projects/automatic'}:
             self._require_local_setup()
             from . import projects
@@ -373,8 +387,10 @@ class Handler(BaseHTTPRequestHandler):
             identity = self._identity()
         role, data = identity["role"], self.server.data_path
         if method == "GET" and path == "/api/bootstrap":
+            from .knowledge_projects import catalog
             return self._json({"app": {"name": "Mnemos", "version": __version__}, "session": identity,
                                "documents": core.list_documents(data, role),
+                               "knowledge_projects": catalog(data, role),
                                "workflows": core.list_workflows(data, role) if role != "anonymous" else [],
                                "settings": core.public_settings(data, role),
                                "workspace_id": self.server.workspace_id,
@@ -432,7 +448,7 @@ class Handler(BaseHTTPRequestHandler):
             from . import skill_builder
             if path == '/api/skill-candidates' and method == 'GET':
                 params=parse_qs(parsed.query)
-                return self._json(skill_builder.candidates(data,params.get('query',[''])[0],params.get('examples',['0'])[0]=='1'))
+                return self._json(skill_builder.candidates(data,params.get('query',[''])[0],params.get('examples',['0'])[0]=='1', params.get('project_id',[''])[0]))
             if path == '/api/skill-preview' and method == 'POST':
                 return self._json(skill_builder.prepare(data,self._body()))
             if path == '/api/skill-builds':
@@ -451,9 +467,12 @@ class Handler(BaseHTTPRequestHandler):
             raise core.MnemosError('Skill route or method not supported.',405)
         if method == "GET" and path == "/api/documents":
             query = parse_qs(parsed.query).get("query", [""])[0]
-            return self._json({"documents": core.list_documents(data, role, query)})
+            from .knowledge_projects import scope
+            return self._json({"documents": scope(core.list_documents(data, role, query), parse_qs(parsed.query).get("project_id", [""])[0])})
         if method == "GET" and path.startswith("/api/documents/"):
-            return self._json({"document": core.get_document(data, path[len("/api/documents/"):], role)})
+            document = core.get_document(data, path[len("/api/documents/"):], role)
+            from .knowledge_projects import freshness
+            return self._json({"document": document, "freshness": freshness(data, document)})
         if method == "GET" and path == "/api/recall":
             from .recall import recall
             params = parse_qs(parsed.query)
@@ -461,7 +480,7 @@ class Handler(BaseHTTPRequestHandler):
                 budget = int(params.get("budget", ["6000"])[0])
             except ValueError as exc:
                 raise core.MnemosError("Recall budget must be a number of characters.") from exc
-            return self._json(recall(data, params.get("query", [""])[0], budget, role))
+            return self._json(recall(data, params.get("query", [""])[0], budget, role, params.get("project_id", [""])[0]))
         if method == 'GET' and path == '/api/handoff':
             from .handoff import build_pack
             params = parse_qs(parsed.query)
@@ -469,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
                 budget = int(params.get('budget', ['6000'])[0])
             except ValueError as exc:
                 raise core.MnemosError('Handoff budget must be a number of characters.') from exc
-            return self._json(build_pack(data, params.get('query', [''])[0], budget, role, params.get('id', [])))
+            return self._json(build_pack(data, params.get('query', [''])[0], budget, role, params.get('id', []), params.get('project_id', [''])[0]))
         if method == 'GET' and path == '/api/skills/export':
             self._require(identity, {'owner', 'author'})
             from .handoff import skills_archive

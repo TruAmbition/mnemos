@@ -7,6 +7,7 @@ import MnemosKit
     @Published var setup: Setup?
     @Published var connections: [Connection] = []
     @Published var projects: [Project] = []
+    @Published var knowledgeProjects: [KnowledgeProject] = []
     @Published var backups: [BackupRecord] = []
     @Published var busy = false
     @Published var error = ""
@@ -57,18 +58,19 @@ import MnemosKit
         let current = try await api.get("/api/runtime", as: Runtime.self)
         guard current.kind == "mnemos-local-runtime-v1" else { throw LocalError("This port is not running Mnemos.") }
         runtime = current
-        guard ownsService else { setup = nil; connections = []; projects = []; backups = []; return }
+        guard ownsService else { setup = nil; connections = []; projects = []; knowledgeProjects = []; backups = []; return }
         let settings = try await api.get("/api/setup", as: Setup.self)
         guard settings.workspace_id == current.workspace_id else { stale = true; throw LocalError("The workspace changed while loading. Reload to continue.") }
         setup = settings; author = settings.author; assistant = settings.assistant_mode; backup = settings.backup
         mode = settings.initialized ? "update" : "create"; target = settings.data_path
         inspected = nil; installObsidian = false; stale = false
-        connections = []; projects = []; backups = []
+        connections = []; projects = []; knowledgeProjects = []; backups = []
         if settings.initialized {
             // A secondary panel failing must not prevent access to setup/service controls.
             do {
                 connections = try await api.get("/api/connections", as: Connections.self).connections
-                projects = try await api.get("/api/projects", as: Projects.self).projects
+                let inventory = try await api.get("/api/projects", as: Projects.self)
+                projects = inventory.projects; knowledgeProjects = inventory.knowledge_projects ?? []
                 backups = try await api.get("/api/backups", as: Backups.self).backups
             } catch { self.error = "Workspace loaded. Some details could not load: " + error.localizedDescription }
         } else { section = "Workspace" }

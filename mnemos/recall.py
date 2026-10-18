@@ -40,8 +40,9 @@ def recall_documents(documents, query, budget=6000):
         summary = str(doc.get('summary', '')).casefold()
         body = str(doc.get('body', '')).casefold()
         tags = ' '.join(str(x) for x in doc.get('tags', [])).casefold()
+        project_names = ' '.join([doc.get('project', ''), *doc.get('project_names', [])]).casefold()
         score = sum((12 if term in title else 0) + (7 if term in tags else 0) +
-                    (5 if term in summary else 0) + min(4, body.count(term)) for term in terms)
+                    (5 if term in summary else 0) + (5 if term in project_names else 0) + min(4, body.count(term)) for term in terms)
         if query.casefold() == str(doc.get('id', '')).casefold():
             score += 100
         if score:
@@ -65,6 +66,8 @@ def recall_documents(documents, query, budget=6000):
         header = f"## {display_title}\nSource: {doc['id']} · revision {doc.get('revision', '')[:12]} · {doc.get('status', 'draft')}"
         if doc.get('example'):
             header += ' · EXAMPLE'
+        if doc.get('evidence_changed'):
+            header += ' · SOURCE EVIDENCE CHANGED: review against newer sources'
         header += '\n'
         summary_room = max(0, min(350, min(per_item, available) - len(header) - 83))
         summary = str(doc.get('summary', ''))[:summary_room]
@@ -92,9 +95,14 @@ def recall_documents(documents, query, budget=6000):
             'items': items, 'context': context, 'method': 'keyword', 'estimate_notice': 'Token estimate uses characters / 4; actual token use varies.'}
 
 
-def recall(data_path, query, budget=6000, role='owner'):
+def recall(data_path, query, budget=6000, role='owner', project_id=''):
     from .core import list_documents
-    return recall_documents(current_project_context(data_path, list_documents(data_path, role=role)), query, budget)
+    from .knowledge_projects import scope, freshness
+    documents = scope(current_project_context(data_path, list_documents(data_path, role=role)), project_id)
+    for doc in documents:
+        if any(isinstance(s,str) and s.startswith('mnemos') for s in doc.get('sources', [])):
+            doc['evidence_changed'] = bool(freshness(data_path, doc)['changed'])
+    return recall_documents(documents, query, budget)
 
 
 def current_project_context(data_path, documents):

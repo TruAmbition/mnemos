@@ -42,3 +42,7 @@ For cross-document analysis, use Available skills → AI workflow discovery. Sel
 With local CLI access, `python3 -m mnemos skill-analysis request --file selection.json` accepts `goal` and `source_ids`. `skill-analysis preview --file proposal.json` accepts an object containing `proposal`; `skill-analysis accept --file reviewed.json` requires that preview's exact `proposal` and `review_revision`. Each accepts `--data`. A cloud chat works with the supplied handoff and returns JSON for local import; no tunnel or key is needed.
 
 `python3 -m mnemos local-skills` lists local manifest metadata from personal folders, registered projects, cached plugins, and explicitly added folders. Found files are not proof of activation in an assistant. The local owner can also use the Existing local skills panel. Read a relevant existing skill before deciding to recreate its workflow; do not automatically overwrite, enable, or execute discovered skills.
+
+## Cross-repository systems
+
+Use `--project-id` with skill candidates to scope a top-level system, or its Project scope selector in the portal. The analysis request also accepts `project_id` and requires all selected source documents to belong to it. Combine reviewed system explanations, end-to-end Flow notes, and runbooks across repositories. Define skills by task boundaries, inputs, and outputs; repository boundaries need not be skill boundaries. Resolve changed source evidence before building. Keep shared-service dependencies and approval checkpoints explicit.
