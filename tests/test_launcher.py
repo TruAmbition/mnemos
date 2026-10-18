@@ -37,7 +37,7 @@ class LauncherTests(unittest.TestCase):
             browser.assert_not_called()
 
     def test_pinned_service_requires_same_data_folder(self):
-        status = {'installation': None, 'data_path': '/one'}
+        status = {'installation': None, 'data_path': str(Path('/one'))}
         self.assertTrue(launcher.same_runtime(status, None, Path('/one')))
         self.assertFalse(launcher.same_runtime(status, None, Path('/two')))
         self.assertFalse(launcher.same_runtime(status, Path('/one/installation.json'), Path('/one')))
