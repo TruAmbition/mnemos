@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import shutil
 from .backup import snapshot_bytes
+from . import __version__
 
 
 def vault_archive(data_path):
@@ -23,7 +24,7 @@ def build_reader(data_path, output):
     with storage_lock(data_path):
         documents = list_documents(data_path, role='reader')
         workflows = list_workflows(data_path, role='reader')
-    payload = {'app': {'name': 'Mnemos', 'version': '0.2.0'}, 'session': {'role': 'reader', 'author': 'Reader'},
+    payload = {'app': {'name': 'Mnemos', 'version': __version__}, 'session': {'role': 'reader', 'author': 'Reader'},
                'documents': documents, 'workflows': workflows,
                'settings': {}, 'static': True, 'sample': all(d.get('example') for d in documents)}
     output.mkdir(parents=True, exist_ok=True)

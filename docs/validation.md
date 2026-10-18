@@ -1,6 +1,10 @@
-# Version 0.5 validation
+# Version 0.5.1 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## Visual identity (0.5.1)
+
+The midnight/violet/cyan identity and shared geometric icon were checked in the live portal and setup page. The existing core, backup/recall/export, and launcher suites passed 31 Python tests; all 39 JavaScript helper tests passed. No behavior-only tests were added for the visual changes. A portable reader smoke check confirmed the current version and identical SVG/PNG assets. The Apple Silicon app and DMG were rebuilt with the native ICNS; the packaged icon bytes matched the committed asset and the bundled workflow planner produced the example plan successfully. Windows ICO wiring is included but the Windows package was not built locally.
 
 ## Automatic project refresh (0.5)
 

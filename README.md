@@ -22,7 +22,7 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.5.0 reconstruction prompt](prompts/rebuild-mnemos-v0.5.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with automatic project refresh. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.5.1 reconstruction prompt](prompts/rebuild-mnemos-v0.5.1.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with automatic project refresh and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file is approximately 709 KiB because it carries the source itself, including the historical 0.3.0 prompt. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
@@ -198,3 +198,7 @@ See [validation notes](docs/validation.md) for the checks performed on this rele
 The GitHub Actions workflow runs the test suite across Linux, macOS, and Windows. It does not deploy a library or upload private vault contents. Keep implementation changes separate from private data, use the seed vault for non-sensitive examples, and document behavior changes in the relevant guide. See [architecture and roadmap](docs/architecture.md) for extension points and current limitations.
 
 Released under the [MIT license](LICENSE).
+
+## Visual identity
+
+Mnemos uses midnight navigation, violet actions, cyan connection indicators, and light reading surfaces. Its original geometric M connects two paths to a central context core. The portal, setup, browser icon, portable reader, and desktop packages share this mark. Editable vector source is `web/mnemos-icon.svg`; native icons are in `assets/brand/`. `scripts/build_brand_assets.py` regenerates SVG, PNG, ICO and ICNS from shared geometry (Pillow is a development-only dependency). Prebuilt icons are committed, so normal use and desktop builds need no image-generation dependency.

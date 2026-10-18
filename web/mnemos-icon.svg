@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Mnemos memory core</title>
+  <rect x="2" y="2" width="124" height="124" rx="29" fill="#11172c" stroke="#374161" stroke-width="2"/>
+  <polyline points="26,94 26,34 64,66 102,34 102,94" fill="none" stroke="#b49aff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M64 66V81" stroke="#b49aff" stroke-width="6"/>
+  <polygon points="64,77 75,88 64,99 53,88" fill="#4de1e8"/>
+</svg>

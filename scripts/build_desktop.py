@@ -36,6 +36,9 @@ def main():
                '--workpath', str(work / 'build'), '--specpath', str(work),
                '--collect-submodules', 'mnemos', '--collect-submodules', 'scripts',
                '--add-data', str(scripts) + ':scripts']
+    icon = ROOT / 'assets/brand' / ('mnemos.icns' if sys.platform == 'darwin' else 'mnemos.ico')
+    if sys.platform in {'darwin', 'win32'}:
+        command += ['--icon', str(icon)]
     for resource in resources:
         command += ['--add-data', str(ROOT / resource) + ':' + resource]
     command += [str(ROOT / 'scripts/desktop.py')]
@@ -73,7 +76,7 @@ def main():
         if sys.platform == 'win32':
             # A separate windowless launcher preserves the runtime's stdio for MCP.
             subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--onefile', '--windowed',
-                            '--name', 'Open Mnemos', '--distpath', str(portable),
+                            '--name', 'Open Mnemos', '--icon', str(icon), '--distpath', str(portable),
                             '--workpath', str(work / 'windows-launcher'), '--specpath', str(work),
                             str(ROOT / 'scripts/windows_launcher.py')], check=True)
         (portable / 'README.txt').write_text('Keep this entire folder together. Open Mnemos.exe on Windows or the Mnemos executable on Linux.\n'
