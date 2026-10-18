@@ -42,6 +42,8 @@ The 0.4 Apple Silicon desktop bundle was rebuilt and smoke-tested with an isolat
 
 ## Standalone reconstruction prompt
 
+The 0.7.0 prompt recovered all 110 application files at `4f23f0a16bbfbd3a11bf1e007ee9a66b02181f28`. Independent comparisons matched every byte and executable mode. The utility extracted from the finished prompt rejected corruption, truncation, traversal, and an existing destination. Private runtime records and reconstruction prompts are excluded from the capsule.
+
 The 0.6.0 prompt recovered all 107 application files at `3e00262c79091496dba57e1d4f2ac5736da9d44a`. Independent comparisons matched every byte and executable mode; the utility extracted from the finished prompt passed corruption, truncation, traversal, and existing-destination rejection checks. The capsule excludes private data and all reconstruction prompts.
 
 The 0.5.0 prompt recovered 99 application files at `2a5f3a40f0f0792c1a9beed2614410cdb77416db`, excluding the reconstruction-prompt directory to prevent recursive payload growth. Independent comparisons verified every byte and executable mode. Its extracted utility passed corruption, truncation, traversal, and existing-destination rejection checks. The user's source portal was restarted on the same active workspace; the 60-second monitor was running and no user repositories were registered or enabled.
