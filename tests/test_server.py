@@ -81,6 +81,25 @@ class ServerTests(unittest.TestCase):
             self.server.setup_enabled = False
             self.assertEqual(self.request(path='/api/projects')[0], 403)
 
+    def test_analysis_and_local_inventory_access_boundaries(self):
+        from unittest.mock import patch
+        from mnemos import skill_inventory
+        with patch.object(skill_inventory,'inventory',return_value={'skills':[],'warnings':[]}):
+            self.assertEqual(self.request(path='/api/local-skills')[0],200)
+            for role in ['reader','author']:
+                self.assertEqual(self.request(path='/api/local-skills',headers={'Authorization':'Bearer '+self.token(role)})[0],403)
+            self.server.setup_enabled=False
+            self.assertEqual(self.request(path='/api/local-skills')[0],403)
+            self.server.setup_enabled=True
+        payload={'goal':'Combine the documented steps','source_ids':['approved','draft']}
+        status,_,record=self.request('POST','/api/skill-analysis/request',payload)
+        self.assertEqual(status,200);self.assertEqual(len(record['sources']),2)
+        for endpoint in ['/api/skill-analysis/request','/api/skill-analysis/preview','/api/skill-analysis/accept','/api/local-skills']:
+            self.assertEqual(self.request('POST',endpoint,payload,{'Authorization':'Bearer '+self.token('reader')})[0],403)
+            self.assertEqual(self.request('POST',endpoint,payload,{'X-Mnemos-Workspace':'stale'})[0],409)
+            self.assertEqual(self.request('POST',endpoint,payload,{'Origin':'https://elsewhere.invalid'})[0],403)
+        self.assertEqual(self.request('POST','/api/skill-analysis/request',payload,{'Authorization':'Bearer '+self.token('author')})[0],200)
+
     def test_skill_builder_preview_save_download_and_access_boundaries(self):
         import io, zipfile
         core.save_document(self.data, {'id':'skill-source','title':'Repair test data','type':'runbook','status':'verified','body':'Inspect the local test data, then verify the result.'})

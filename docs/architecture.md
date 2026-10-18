@@ -31,6 +31,8 @@ private-data/
   backups/             Default local snapshot destination
   backup-history.json  Backup outcomes, when backups have run
   skill-builds/        Immutable generated skill snapshots (private, outside the vault)
+  skill-analysis/      Explicit source handoffs for external AI reasoning
+  skill-proposals/     Reviewed, accepted workflow decompositions
 ```
 
 The vault is always `vault/` under the selected data directory. Initialization refuses to adopt a nonempty unconfigured vault and does not merge with another Obsidian library. Opening the dedicated folder in Obsidian keeps its vault configuration separate. Choosing a data directory outside existing vaults is part of setup.
@@ -74,6 +76,8 @@ Neither the local MCP route nor the file handoff needs a tunnel. Optional existi
 ## Suggested and generated skills
 
 `mnemos/skill_builder.py` selects active procedural documents and valid dependency plans locally. It packages a small SKILL.md with full source references and revision provenance; no model inference or executable generation is involved. Owner/author API routes support discovery, preview, save, history, ZIP download, and Markdown handoff. Readers and static exports do not expose these private builds. Preview and save check source revisions and the selected name, description, and target. Saved JSON snapshots live under `skill-builds/`; the vault-only backup does not include them. See [Available skills](available-skills.md).
+
+`skill_analysis.py` prepares bounded, explicit source handoffs and validates imported proposals before acceptance. It adds whole-workflow and child candidates, validates source revisions and dependency graphs, and never invokes a model or executes generated steps. `skill_inventory.py` reads bounded local manifest metadata; its HTTP route is restricted to the local owner. Neither inventory discovery nor an accepted AI proposal grants execution authority.
 
 The existing five MCP tools are unchanged. Local agents can use the skill-builder CLI; a remote chat must use supplied files or an appropriately connected tool and cannot assume access to this workstation.
 

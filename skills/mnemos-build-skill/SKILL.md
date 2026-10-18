@@ -34,3 +34,11 @@ Generate scripts only when deterministic repetition materially helps. Parameteri
 If the environment offers a skill validator, run it and inspect its result. Check links and any added script behavior using non-destructive inputs within current authorization. A structural validator does not prove the operational procedure succeeds.
 
 Provide the generated folder at the user's chosen location and explain the invocation, expected inputs, source basis, and any untested behavior. Installing a reusable skill does not authorize future external actions. Preserve existing work when updating a skill and describe meaningful changes in scope.
+
+## Discover a workflow across documents
+
+For cross-document analysis, use Available skills → AI workflow discovery. Select sources and a goal, prepare the handoff, and analyze only those supplied records. Propose a coherent workflow plus independently reusable skills with source-cited steps, inputs, outputs, validation, dependencies, approval checkpoints, and evidence gaps. Return the exact JSON format requested in the handoff; do not invent source IDs or missing procedures. Mnemos previews and validates the proposal before the user accepts suggestions and builds packages.
+
+With local CLI access, `python3 -m mnemos skill-analysis request --file selection.json` accepts `goal` and `source_ids`. `skill-analysis preview --file proposal.json` accepts an object containing `proposal`; `skill-analysis accept --file reviewed.json` requires that preview's exact `proposal` and `review_revision`. Each accepts `--data`. A cloud chat works with the supplied handoff and returns JSON for local import; no tunnel or key is needed.
+
+`python3 -m mnemos local-skills` lists local manifest metadata from personal folders, registered projects, cached plugins, and explicitly added folders. Found files are not proof of activation in an assistant. The local owner can also use the Existing local skills panel. Read a relevant existing skill before deciding to recreate its workflow; do not automatically overwrite, enable, or execute discovered skills.

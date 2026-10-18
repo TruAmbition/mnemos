@@ -409,6 +409,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True}, cookie="mnemos_session=logged-out; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200")
         if path.startswith("/api/"):
             self._require(identity, {"owner", "author", "reader"})
+        if path == '/api/local-skills':
+            self._require_local_setup()
+            from . import skill_inventory
+            if method=='GET':return self._json(skill_inventory.inventory(data))
+            if method=='POST':return self._json(skill_inventory.add_folder(data,self._body()))
+            raise core.MnemosError('Unsupported local skill operation.',405)
+        if path.startswith('/api/skill-analysis/'):
+            self._require(identity, {'owner','author'})
+            from . import skill_analysis
+            operations={'request':skill_analysis.request,'preview':skill_analysis.validate,'accept':skill_analysis.accept}
+            operation=operations.get(path[len('/api/skill-analysis/'):])
+            if method=='POST' and operation:return self._json(operation(data,self._body()))
+            raise core.MnemosError('Unsupported analysis operation.',405)
         if path in {'/api/skill-candidates','/api/skill-builds','/api/skill-preview'} or path.startswith('/api/skill-builds/'):
             self._require(identity, {'owner','author'})
             from . import skill_builder

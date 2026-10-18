@@ -417,11 +417,71 @@
   function skillCandidateCard(candidate) {
     return `<article class="panel skill-card"><div class="connection-card-title">${icon('skills')}<h2>${escape(candidate.title)}</h2></div><div class="skill-badges"><span class="connection-status">${escape(skillReadiness(candidate.readiness))}</span><span class="inline-count">${candidate.source_count} source${candidate.source_count===1?'':'s'}</span>${candidate.project?`<span class="inline-count">${escape(candidate.project)}</span>`:''}</div><p>${escape(candidate.reason)}</p><details><summary>Review source documents</summary>${candidate.sources.map(source=>`<div class="skill-source"><button class="button text small" data-action="read-skill-source" data-source-id="${escape(source.id)}">${escape(source.title)}</button><small>${escape(source.status)} · revision ${escape(source.revision.slice(0,12))}${source.example?' · example':''}</small></div>`).join('')}</details><div class="project-actions"><button class="button primary small" data-action="configure-skill" data-candidate-id="${escape(candidate.id)}"${candidate.buildable?'':' disabled'}>${icon('plus')} Build skill</button>${candidate.buildable?'':'<small>Split this procedure into smaller tasks before building.</small>'}</div></article>`;
   }
+  function analysisPanel() {
+    return `<section class="panel skill-analysis-panel"><div class="panel-heading">${icon('skills')}<h2>AI workflow discovery</h2></div><p>Connect several documents into a complete workflow and smaller reusable skills using your existing ChatGPT or Claude chat. No API key or tunnel.</p><button class="button primary" data-action="choose-analysis-sources">Choose documents</button><div id="analysis-request"></div><details class="analysis-import"><summary>Import an AI proposal</summary><p>Paste the JSON returned by your assistant. Preview the steps, source citations, dependencies, and gaps before accepting.</p><label for="analysis-json">AI proposal JSON</label><textarea id="analysis-json" class="code-editor" rows="5" maxlength="150000"></textarea><button class="button" data-action="preview-analysis">Preview proposal</button></details><div id="analysis-review" aria-live="polite"></div></section>`;
+  }
+  function chooseAnalysisSources() {
+    const sources=documents().filter(d=>d.status!=='archived'&&!d.example);
+    $('#analysis-request').innerHTML=`<form id="analysis-source-form"><div class="field"><label for="analysis-goal">What workflow should the assistant look for?</label><input id="analysis-goal" name="goal" maxlength="1000" required placeholder="e.g. Prepare, deploy, verify, and recover this service"></div><fieldset class="analysis-source-list"><legend>Select 2–20 documents (up to 100 KB)</legend>${sources.map(d=>`<label><input type="checkbox" name="source_ids" value="${escape(d.id)}"> ${escape(d.title)} <small>${escape(d.status)} · ${escape(d.project||'No project')}</small></label>`).join('')||'<p>Capture at least two documents first. Bundled examples are excluded here.</p>'}</fieldset><p>The pack contains the full selected notes. Review it before uploading it to your chosen chat.</p><button class="button primary" type="submit">Prepare analysis handoff</button></form><div id="analysis-pack"></div>`;
+    $('#analysis-source-form').addEventListener('submit',prepareAnalysisHandoff);
+  }
+  async function prepareAnalysisHandoff(event) {
+    event.preventDefault();const fields=new FormData(event.target),button=event.target.querySelector('[type="submit"]');button.disabled=true;
+    try{const record=await api('/api/skill-analysis/request',{method:'POST',body:JSON.stringify({goal:fields.get('goal'),source_ids:fields.getAll('source_ids')})});
+      if(state.view!=='skills'||state.workspaceStale||!$('#analysis-pack'))return;
+      state.analysisPack=record;
+      $('#analysis-pack').innerHTML=`<h3>Analysis handoff ready</h3><p>Attach this file in ChatGPT or Claude. Ask it to analyze the sources and return the requested JSON. Then paste its response into Import an AI proposal below.</p><label for="analysis-prompt">Review selected content</label><textarea id="analysis-prompt" class="code-editor" rows="8" readonly>${escape(record.prompt)}</textarea><button class="button primary" data-action="download-analysis">Download analysis handoff</button>`;
+    }catch(error){toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
+  }
+  function analysisReview(checked) {
+    const p=checked.proposal;
+    return `<h3>${escape(p.title)}</h3><p>${escape(p.rationale)}</p>${notice(checked.notice)}<div class="skill-grid">${p.skills.map(s=>`<article class="panel skill-card"><h3>${escape(s.title)}</h3><p>${escape(s.description)}</p><p><strong>Inputs:</strong> ${escape(s.inputs.join('; '))}</p><p><strong>Outputs:</strong> ${escape(s.outputs.join('; '))}</p><p><strong>Dependencies:</strong> ${escape(s.depends_on.join(', ')||'None')}</p><p><strong>Approval checkpoint:</strong> ${s.requires_approval?'Required':'Check source requirements'}</p><ol>${s.steps.map(step=>`<li>${escape(step.instruction)}<br><small>Sources: ${escape(step.source_ids.join(', '))}</small></li>`).join('')}</ol><p><strong>Validation:</strong> ${escape(s.validation.join('; '))}</p></article>`).join('')}</div><h3>Evidence gaps</h3><p>${escape(p.gaps.join('\n')||'No gaps reported by the assistant. Verify against the sources.')}</p><details><summary>Check source documents</summary>${checked.sources.map(s=>`<button class="button text small" data-action="read-skill-source" data-source-id="${escape(s.id)}">${escape(s.title)} · ${escape(s.id)}</button>`).join('')}</details><p>Accepting adds suggestions for the whole workflow and each smaller skill. It does not run or install them.</p><button class="button primary" data-action="accept-analysis">Accept as skill suggestions</button>`;
+  }
+  async function previewAnalysis(button) {
+    button.disabled=true;const raw=$('#analysis-json').value;state.analysisReview=null;
+    try{const checked=await api('/api/skill-analysis/preview',{method:'POST',body:JSON.stringify({proposal:JSON.parse(raw)})});
+      if(state.view!=='skills'||state.workspaceStale||$('#analysis-json')?.value!==raw)return;
+      state.analysisReview=checked;$('#analysis-review').innerHTML=analysisReview(checked);
+    }catch(error){if($('#analysis-review'))$('#analysis-review').innerHTML=notice(error.message,'error');}finally{if(button.isConnected)button.disabled=false;}
+  }
+  async function acceptAnalysis(button) {
+    if(!state.analysisReview)return;button.disabled=true;
+    try{await api('/api/skill-analysis/accept',{method:'POST',body:JSON.stringify(state.analysisReview)});
+      if(state.view!=='skills'||state.workspaceStale)return;
+      state.analysisReview=null;$('#analysis-review').innerHTML=notice('Accepted. Build the complete workflow or individual skills from the suggestions below.');$('#analysis-json').value='';await loadSkillSuggestions();
+    }catch(error){toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
+  }
+  function localSkillCards(result,query='') {
+    const terms=query.toLowerCase().split(/\s+/).filter(Boolean);
+    const found=result.skills.filter(s=>terms.every(t=>(s.name+' '+s.description+' '+s.location).toLowerCase().includes(t)));
+    return `<p>${found.length} local skill manifests found. ${escape(result.notice)}</p>${result.warnings.map(w=>notice(w)).join('')}<div class="skill-grid">${found.map(s=>`<article class="panel skill-card"><h3>${escape(s.name)}</h3><p>${escape(s.description||'No readable description in this manifest.')}</p><small>${escape(s.location)} · ${escape(s.status)}</small><details><summary>File location</summary><code class="skill-file-path">${escape(s.path)}</code><p>Read-only inventory. Mnemos has not enabled, imported, modified, or executed this skill.</p></details></article>`).join('')}</div>`;
+  }
+  async function loadLocalSkills() {
+    if(!state.data.setup_available||!isOwner())return;
+    try{const result=await api('/api/local-skills');if(state.view!=='skills'||state.workspaceStale)return;
+      state.localSkills=result;$('#local-skill-results').innerHTML=localSkillCards(result,$('#local-skill-query').value);
+    }catch(error){if($('#local-skill-results'))$('#local-skill-results').innerHTML=notice(error.message,'error');}
+  }
+  async function addSkillFolder(event) {
+    event.preventDefault();const path=new FormData(event.target).get('path');const button=event.target.querySelector('button');button.disabled=true;
+    try{await api('/api/local-skills',{method:'POST',body:JSON.stringify({path})});await loadLocalSkills();toast('Skill folder added to this workspace.');}
+    catch(error){toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
+  }
+  function existingSkillsPanel() {
+    if(!state.data.setup_available||!isOwner())return '';
+    return `<section class="panel" style="margin-top:24px"><details id="local-skills-panel"><summary>Existing local skills — including skills made elsewhere</summary><p>Read-only discovery from personal skill folders, registered projects, and cached plugins. Cloud-account-only skills require a local export. A manifest can exist without being enabled in its assistant.</p><div class="field"><label for="local-skill-query">Filter existing skills</label><input type="search" id="local-skill-query"></div><button class="button" data-action="refresh-local-skills">Scan local skills</button><div id="local-skill-results" aria-live="polite"></div><form id="local-skill-folder" class="skill-folder-form"><label for="skill-folder-path">Another folder containing skills</label><input id="skill-folder-path" name="path" placeholder="Absolute path to a skill folder" required><button class="button" type="submit">Add folder</button></form></details></section>`;
+  }
   function renderSkills() {
     $('#main').innerHTML=heading('YOUR NEXT REUSABLE WORKFLOW','Available skills','Turn documented procedures into skills for ChatGPT or Claude.')+
-      notice('Suggestions come from your procedures and workflow dependencies. Building creates instructions and source references locally; it does not execute a task, call an AI service, or install anything in a cloud account.')+
-      `<form class="panel skill-filters" id="skill-search"><div class="field"><label for="skill-query">Find a task or project</label><input id="skill-query" name="query" type="search" maxlength="1000" placeholder="e.g. backup, deployment, troubleshooting" value="${escape(state.skillQuery||'')}"></div><label class="project-auto-choice"><input type="checkbox" name="examples"${state.skillExamples?' checked':''}> Show bundled examples</label><button class="button" type="submit">Find suggestions</button></form><div id="skill-builder-slot"></div><div id="skill-candidates" aria-live="polite">Finding documented procedures…</div><section class="panel" style="margin-top:24px"><h2>Built skills</h2><p>Saved packages are snapshots. Review changed sources and build a new version before using an outdated procedure.</p><div id="skill-builds"></div></section>`;
+      notice('Build from documented procedures, or use AI workflow discovery to connect several documents. Review suggestions before reuse; building does not execute or install a skill.')+analysisPanel()+
+      `<form class="panel skill-filters" id="skill-search"><div class="field"><label for="skill-query">Find a task or project</label><input id="skill-query" name="query" type="search" maxlength="1000" placeholder="e.g. backup, deployment, troubleshooting" value="${escape(state.skillQuery||'')}"></div><label class="project-auto-choice"><input type="checkbox" name="examples"${state.skillExamples?' checked':''}> Show bundled examples</label><button class="button" type="submit">Find suggestions</button></form><div id="skill-builder-slot"></div><div id="skill-candidates" aria-live="polite">Finding documented procedures…</div><section class="panel" style="margin-top:24px"><h2>Built skills</h2><p>Saved packages are snapshots. Review changed sources and build a new version before using an outdated procedure.</p><div id="skill-builds"></div></section>`+existingSkillsPanel();
     $('#skill-search').addEventListener('submit',event=>{event.preventDefault();const fields=new FormData(event.target);state.skillQuery=fields.get('query');state.skillExamples=fields.has('examples');loadSkillSuggestions();});
+    state.analysisReview=null;state.analysisPack=null;
+    $('#analysis-json').addEventListener('input',()=>{state.analysisReview=null;$('#analysis-review').innerHTML='';});
+    if($('#local-skill-folder')){
+      $('#local-skill-folder').addEventListener('submit',addSkillFolder);
+      $('#local-skill-query').addEventListener('input',()=>{if(state.localSkills)$('#local-skill-results').innerHTML=localSkillCards(state.localSkills,$('#local-skill-query').value);});
+    }
     loadSkillSuggestions();loadSkillBuilds();
   }
   async function loadSkillSuggestions() {
@@ -805,6 +865,11 @@
     switch(target.dataset.action){
       case 'reload':load();break;
       case 'read-skill-source':try{const result=await api('/api/documents/'+encodeURIComponent(target.dataset.sourceId));if(state.view==='skills'&&!state.workspaceStale){state.data.documents=documents().filter(d=>d.id!==result.document.id);state.data.documents.unshift(result.document);openDocument(result.document.id);}}catch(error){toast(error.message,true);}break;
+      case 'choose-analysis-sources':chooseAnalysisSources();break;
+      case 'download-analysis':if(state.analysisPack)downloadText('mnemos-workflow-analysis.md',state.analysisPack.prompt);break;
+      case 'preview-analysis':await previewAnalysis(target);break;
+      case 'accept-analysis':await acceptAnalysis(target);break;
+      case 'refresh-local-skills':await loadLocalSkills();break;
       case 'configure-skill':configureSkill(target.dataset.candidateId);break;
       case 'cancel-skill':state.skillPayload=null;state.skillPreview=null;state.skillCandidate=null;$('#skill-builder-slot').innerHTML='';break;
       case 'save-built-skill':await saveBuiltSkill(target);break;

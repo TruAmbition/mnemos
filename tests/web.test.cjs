@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -488,4 +488,14 @@ test('Skill preview renders text safely and offers workspace-bound downloads onl
   const preview=h.skillPackageView(built,false);assert.ok(!preview.includes('<script>'));assert.match(preview,/Save skill/);assert.ok(!preview.includes('Download skill ZIP'));
   h.state.data={workspace_id:'current-workspace'};
   const saved=h.skillPackageView(built,true);assert.match(saved,/workspace=current-workspace/);assert.match(saved,/Download skill ZIP/);assert.match(saved,/Download cloud handoff/);
+});
+
+
+test('AI proposal review escapes steps and shows dependency and evidence gaps', () => {
+  const html=h.analysisReview({notice:'Review evidence',sources:[{id:'<source>',title:'Source'}],proposal:{title:'<img src=x>',rationale:'Why',gaps:['<script>gap</script>'],skills:[{title:'Skill',description:'Description',inputs:['Input'],outputs:['Output'],depends_on:['prior-step'],requires_approval:true,steps:[{instruction:'<script>bad</script>',source_ids:['<source>']}],validation:['Verify']}]}});
+  assert.ok(!/<(?:script|img)\b/.test(html));assert.match(html,/prior-step/);assert.match(html,/Required/);assert.match(html,/&lt;source&gt;/);assert.match(html,/Evidence gaps/);
+});
+test('Existing skill cards filter metadata and escape untrusted paths', () => {
+  const result={notice:'Read only',warnings:[],skills:[{name:'deploy',description:'Deploy safely',location:'Personal',status:'Manifest found',path:'/tmp/<script>.md'},{name:'review',description:'Review docs',location:'Project',status:'Manifest found',path:'/tmp/review'}]};
+  const html=h.localSkillCards(result,'deploy');assert.match(html,/1 local skill manifests/);assert.ok(!html.includes('<script>'));assert.ok(!html.includes('/tmp/review'));assert.match(html,/&lt;script&gt;/);
 });

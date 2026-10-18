@@ -14,10 +14,15 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("skill-candidates", "skill-build", "skill-export", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command == 'skill-candidates':
+        if command == 'skill-analysis':
+            sub.add_argument('action',choices=['request','preview','accept'])
+            sub.add_argument('--file',required=True,help='Source selection or proposal/review JSON')
+        elif command == 'local-skills':
+            sub.add_argument('--folder',help='Add an explicit folder to the read-only inventory')
+        elif command == 'skill-candidates':
             sub.add_argument('query', nargs='*')
             sub.add_argument('--include-examples', action='store_true')
         elif command == 'skill-build':
@@ -61,7 +66,14 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command == 'skill-candidates':
+        if args.command == 'skill-analysis':
+            from . import skill_analysis
+            payload=json.loads(Path(args.file).read_text('utf-8'))
+            result={'request':skill_analysis.request,'preview':skill_analysis.validate,'accept':skill_analysis.accept}[args.action](args.data,payload)
+        elif args.command == 'local-skills':
+            from . import skill_inventory
+            result=skill_inventory.add_folder(args.data,{'path':args.folder}) if args.folder else skill_inventory.inventory(args.data)
+        elif args.command == 'skill-candidates':
             from . import skill_builder
             result=skill_builder.candidates(args.data,' '.join(args.query),args.include_examples)
         elif args.command == 'skill-build':

@@ -11,7 +11,7 @@ Start as one author with a team of readers. Add named author credentials when mo
 - A local connection dashboard with workspace targets, mismatch notices, local tests, and service stop controls.
 - A searchable web library with document types, project filters, and draft/verified status.
 - A separate Obsidian vault containing runbooks, knowledge items, troubleshooting, decisions, work logs, microtasks, and context handoffs.
-- An Available skills page that suggests documented procedures, previews ChatGPT/Claude packages, and tracks changed sources.
+- Available skills with AI handoffs for cross-document workflow discovery, reusable child skills, and a read-only inventory of skills made elsewhere.
 - Five reusable assistant skills for capture, recall, file handoffs, workflow planning, and building new skills from documentation.
 - Local MCP tools for compatible assistants, plus a cloud handoff page for exchanging reviewed context files without a tunnel.
 - A CLI for capture, search, context recall, skill export, and dependency planning.
@@ -23,7 +23,7 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.6.0 reconstruction prompt](prompts/rebuild-mnemos-v0.6.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with Available skills, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.7.0 reconstruction prompt](prompts/rebuild-mnemos-v0.7.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with Available skills, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file carries the application source itself. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
@@ -98,7 +98,9 @@ Mnemos does not automatically access every previous conversation or monitor all 
 
 Open **Available skills** to find procedures and dependency-based workflows in your documentation. Review the listed sources, choose **Build skill**, select ChatGPT or Claude, adjust the name and trigger description, then preview and save. Download a skill ZIP or a single Markdown handoff for a cloud chat. Saved builds show when their sources have changed.
 
-Suggestions use document types and procedure structure; they do not infer usage frequency or certify a workflow. Drafts need review, bundled examples are hidden by default, and generated skills need testing in the target assistant. Building and using file handoffs needs no tunnel. See [Available skills](docs/available-skills.md) for target-specific setup, CLI use, and limits.
+Use **AI workflow discovery** to analyze selected notes in your existing ChatGPT or Claude chat, import its proposed decomposition, and build a complete workflow or smaller skills after review. **Existing local skills** scans personal folders, registered projects, cached plugins, and added folders without modifying them. Cloud-account-only skills need a local export.
+
+Automatic suggestions use document types and procedure structure; accepted AI proposals add cross-document reasoning. Neither route certifies a workflow. Drafts need review, bundled examples are hidden by default, and generated skills need testing in the target assistant. Building and using file handoffs needs no tunnel. See [Available skills](docs/available-skills.md) for target-specific setup, CLI use, and limits.
 
 ## Connect your assistant
 

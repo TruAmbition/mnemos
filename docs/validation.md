@@ -1,6 +1,14 @@
-# Version 0.6.0 validation
+# Version 0.7.0 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## AI workflow handoff and existing skills (0.7)
+
+The full suite passed **169 Python tests and 43 JavaScript tests**. New checks cover explicit cross-document source packs, proposal shape and citations, dependency cycles/missing references, preview acceptance revisions, source changes, parent/child skill generation, private storage path limits, bounded manifest discovery, folded metadata, duplicate locations, read-only preservation, and local-owner versus shared-author/reader access. The affected analysis suite passed again after the final package formatting change. The updated bundled build-skill and all four generated parent/child test packages passed the skill-creator validator.
+
+In a disposable browser workspace, two synthetic cache procedures were selected and a source-complete handoff was prepared. An assistant-authored test proposal combined them into readiness, rebuild, and verification skills. The browser preview displayed source citations, dependencies, an approval checkpoint, and missing environment inputs. Accepting added four AI suggestions (one complete workflow and three child skills); the complete package was previewed and saved. This exercised local handoff/import/build behavior, not a round trip through a separate ChatGPT or Claude account, and did not execute the generated procedures.
+
+Read-only browser discovery found an existing non-Mnemos skill in both personal Codex and Claude folders. The actual portal was restarted on its existing data directory and showed the new controls. User source notes, assistant skills, and the separate tunnel were not modified. The Apple Silicon 0.7 app and DMG were rebuilt; the bundled CLI prepared a handoff, previewed and accepted a fixture proposal, and discovered its whole-workflow and child candidates. The build remains ad-hoc signed and not notarized. Windows/Linux packages were not exercised locally.
 
 ## Available skills (0.6)
 

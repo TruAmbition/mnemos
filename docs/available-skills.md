@@ -15,11 +15,40 @@ Building is local and requires no tunnel, model API key, or inference service. I
 
 ## What suggestions mean
 
-Candidates include non-archived runbooks, troubleshooting notes, microtasks, skill documents, other documents with a procedure heading and multiple numbered steps, and valid workflow dependency plans. Search matches the candidate title, project, and explanation. This is structural discovery, not semantic analysis of your activity or proof that you repeat a task frequently.
+Candidates include non-archived runbooks, troubleshooting notes, microtasks, skill documents, other documents with a procedure heading and multiple numbered steps, and valid workflow dependency plans. Search matches the candidate title, project, and explanation. These automatic candidates use structural discovery. Accepted AI proposals appear alongside them; their reasoning comes from the assistant you use for the handoff. Neither route proves how often you repeat a task.
 
 **Verified sources** means the referenced records are marked verified, not that the new package has passed an operational test. **Review needed** identifies unverified sources. Bundled **Examples** are hidden unless you enable them and remain explicitly labeled. Invalid workflow plans appear as warnings rather than buildable suggestions.
 
-A workflow package preserves its existing dependency order and approval checkpoints. Mnemos does not invent a multi-step orchestration plan by combining unrelated notes. For a new orchestration, use the workflow planner or an assistant to draft and validate that plan first.
+A workflow package preserves its existing dependency order and approval checkpoints. For a new orchestration across documents, use AI workflow discovery below. The assistant proposes the decomposition, and you review its evidence before accepting it.
+
+## AI workflow discovery across documents
+
+1. Select **Choose documents** and describe the workflow to look for.
+2. Select 2–20 non-example source notes, up to 100 KB total. Mnemos prepares a handoff with their full text and exact revisions.
+3. Review the pack, download it, and attach it to your existing ChatGPT or Claude chat. Ask the assistant to perform the analysis and return the requested JSON.
+4. In **Import an AI proposal**, paste the returned JSON and select **Preview proposal**.
+5. Review each smaller skill's inputs, outputs, cited steps, validation, dependencies, approval checkpoints, and evidence gaps. Open the cited source notes when needed.
+6. Select **Accept as skill suggestions**. You can now build a package for the complete workflow or any of its smaller skills.
+
+AI reasoning happens in the chat you choose, not in a model running inside Mnemos. There is no new API key, tunnel, automatic upload, or background model invocation. The assistant must return the provided `mnemos-skill-analysis-v1` format with the exact request ID. If the selected evidence cannot support a workflow, ask it to explain the gaps instead of inventing a proposal.
+
+A proposal has 2–12 smaller skills and uses at least two selected documents. Each skill names required inputs, outputs, validation, 1–15 source-cited steps, and dependencies on other skill IDs. Mnemos rejects unknown source IDs, invalid dependencies, cycles, malformed fields, stale source revisions, and an acceptance that does not match its preview. These checks validate structure and provenance, not semantic truth: review whether each cited source actually supports its step and whether approval and recovery requirements were retained.
+
+The complete workflow package includes all proposed skills in dependency order. A separately exported child skill includes its own source notes and dependency names; it does not install or execute the other skills. Supply and verify their required outputs before using the child alone. Accepted proposals always remain **Review needed**. Changed sources make that proposal unavailable for new builds until you perform a fresh analysis; previously saved packages remain snapshots.
+
+Analysis requests and accepted proposals are private files in `skill-analysis/` and `skill-proposals/` under the active data folder. Each directory is limited to 100 records, with no automatic deletion. Requests contain the selected full text in the prompt. These directories, like `skill-builds/`, are outside the vault-only backup; back them up separately if you need the original analysis history.
+
+Local CLI equivalents are `skill-analysis request --file selection.json`, `skill-analysis preview --file proposal.json`, and `skill-analysis accept --file reviewed.json`. Selection JSON contains `goal` and `source_ids`; preview input contains `proposal`; acceptance uses the preview's returned `proposal` and `review_revision`. Each accepts `--data`.
+
+## Existing skills made outside Mnemos
+
+Expand **Existing local skills — including skills made elsewhere**, then select **Scan local skills**. Filter by name, description, or location. This local-owner-only inventory reads SKILL.md metadata from personal `.agents/skills`, Codex and Claude skill folders, the Mnemos checkout, registered projects, and the Codex plugin cache. Add another absolute skill-folder path when needed. Personal Codex paths respect `CODEX_HOME`.
+
+This is a read-only file inventory: it does not import, overwrite, execute, install, or enable discovered skills. Cached plugin versions may be inactive, and duplicate copies in different locations are shown separately. A skill found on disk is not proof that a particular assistant has loaded it. Skills stored only in a cloud account are not queried; export them to a local folder first. See [OpenAI's skill guide](https://learn.chatgpt.com/docs/build-skills) for native discovery behavior.
+
+The scan skips symbolic links and oversized/unreadable manifests, reports limitations, and is bounded to 5,000 inspected entries, 500 skills, and seven directory levels. Basic scalar and folded descriptions are read; this is not a complete YAML parser. Added folders persist per workspace, up to 20. No broad home-directory scan occurs. The inventory is excluded from shared author/reader access and static exports.
+
+Use `python3 -m mnemos local-skills` from an authorized local assistant or terminal, with optional `--folder /absolute/skill/folder` to register another folder and `--data` to pin a workspace.
 
 ## Use the output
 
