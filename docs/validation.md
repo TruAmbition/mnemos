@@ -2,6 +2,12 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Project color toggle (0.12.1)
+
+All **62 JavaScript tests** passed, including default type colors, shared and unassigned states, consistent project membership colors across different kinds, and stable colors when filtering. An isolated browser check verified the initial off state, changing orb colors and the legend, unchanged node positions and zoom, and restoration of the original type colors. The screenshot uses synthetic documentation. No note data or Obsidian settings were changed.
+
+The updated Apple Silicon app was built; all **6 Swift tests** against its packaged runtime and CLI/MCP forwarding checks passed. Signature and DMG verification passed, and packaged graph assets matched the source. The native integration remains the same embedded local web route. This is a presentation-only change; Python behavior is unchanged from the 216-test 0.12.0 baseline. Cross-platform regression coverage runs in GitHub CI.
+
 ## Knowledge brain (0.12.0)
 
 The source passed **216 Python tests and 60 JavaScript tests** on macOS. Added coverage exercises explicit graph relationships, unambiguous link resolution, source/workflow/skill edges, hidden-note and local-metadata boundaries, node filtering, deterministic bounded layout, colors and size caps, and embedded-view credential cleanup. The graph tests also reject code/comment link examples. Existing authentication semantics remain unchanged.

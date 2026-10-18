@@ -15,6 +15,21 @@
     const edges=graph.edges.filter(e=>ids.has(e.source)&&ids.has(e.target));
     return {nodes,edges,total,limited:total>nodes.length};
   }
+  // Derive colors from the full catalog so filtering never reassigns a project's color.
+  function colorScheme(graph,mode='type',catalog=graph){
+    const palette=['#b39aff','#54d9f2','#f8c568','#6fe0ad','#ff8994','#8ebaff','#ed8bdb','#f2ab84','#91e4d1','#d0a4fb','#d3df8a','#9db1e3'];
+    const projects=catalog.nodes.filter(n=>n.kind==='project').slice().sort((a,b)=>a.id.localeCompare(b.id));
+    const entries=new Map(projects.map((n,i)=>[n.project_id||(n.project_ids||[])[0]||n.id,{key:n.project_id||(n.project_ids||[])[0]||n.id,label:n.label,color:palette[i]||`hsl(${Math.round(i*137.508)%360} 65% 72%)`} ]));
+    const shared={key:'shared',label:'Shared across projects',color:'#cbd5e1'},unassigned={key:'unassigned',label:'No project assigned',color:'#8494aa'};
+    function entry(node){
+      if(mode!=='project'){const [label,color]=style(node.kind);return {key:node.kind,label,color};}
+      const ids=[...new Set(node.kind==='project'?[node.project_id||(node.project_ids||[])[0]||node.id]:(node.project_ids||[]))];
+      if(ids.length>1)return shared;
+      return entries.get(ids[0])||unassigned;
+    }
+    const legend=[...new Map(graph.nodes.map(n=>{const e=entry(n);return [e.key,e];})).values()].sort((a,b)=>a.label.localeCompare(b.label));
+    return {entry,legend};
+  }
   function constrain(point,brain){
     if(!brain){point.x=Math.max(50,Math.min(950,point.x));point.y=Math.max(45,Math.min(655,point.y));return;}
     const cx=point.side?645:355,dx=(point.x-cx)/215,dy=(point.y-345)/260,n=Math.hypot(dx,dy);
@@ -43,9 +58,14 @@
   function mount(container,graph,options={}){
     const svg=el('svg',{viewBox:'0 0 1000 700',role:'group','aria-label':'Knowledge brain. Select a node to inspect its recorded connections.',tabindex:0});
     const defs=el('defs');svg.append(defs);
-    for(const [kind,description] of Object.entries(kinds)){
-      const gradient=el('radialGradient',{id:'brain-orb-'+kind,cx:'32%',cy:'28%',r:'75%'});
-      for(const [offset,color]of [['0%','#ffffff'],['20%',description[1]],['100%','#182742']])gradient.append(el('stop',{offset,'stop-color':color}));defs.append(gradient);
+    const gradients=new Map();
+    function fill(color){
+      if(!gradients.has(color)){
+        const id='brain-orb-'+gradients.size,gradient=el('radialGradient',{id,cx:'32%',cy:'28%',r:'75%'});
+        for(const [offset,value]of [['0%','#ffffff'],['20%',color],['100%','#182742']])gradient.append(el('stop',{offset,'stop-color':value}));
+        defs.append(gradient);gradients.set(color,id);
+      }
+      return `url(#${gradients.get(color)})`;
     }
     const viewport=el('g');svg.append(viewport);
     const outlines=el('g',{'aria-hidden':'true',class:'brain-contours'});viewport.append(outlines);
@@ -62,7 +82,7 @@
     const choose=id=>{options.onSelect?.(id);highlight(id);};
     for(const p of points){
       const g=el('g',{transform:`translate(${p.x} ${p.y})`,class:'brain-node',role:'button',tabindex:0,'aria-label':`${p.label}, ${style(p.kind)[0]}, ${p.connections||0} connections`});g.dataset.id=p.id;
-      g.append(el('title',{},`${p.label} · ${style(p.kind)[0]}`),el('circle',{r:p.r+7,fill:style(p.kind)[1],opacity:.12,class:'brain-halo'}),el('circle',{r:p.r,fill:kinds[p.kind]?`url(#brain-orb-${p.kind})`:style(p.kind)[1],stroke:style(p.kind)[1],'stroke-width':1.2}));
+      g.append(el('title',{},`${p.label} · ${style(p.kind)[0]}`),el('circle',{r:p.r+7,fill:style(p.kind)[1],opacity:.12,class:'brain-halo'}),el('circle',{r:p.r,fill:fill(style(p.kind)[1]),stroke:style(p.kind)[1],'stroke-width':1.2}));
       const label=el('text',{y:p.r+20,'text-anchor':'middle',class:'brain-node-label'},p.label.length>32?p.label.slice(0,30)+'…':p.label);
       if(!options.labels && !['project','repository'].includes(p.kind))label.classList.add('brain-label-quiet');g.append(label);
       g.addEventListener('click',()=>choose(p.id));g.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();choose(p.id);}});
@@ -81,9 +101,17 @@
     svg.addEventListener('pointermove',e=>{if(!drag)return;const box=svg.getBoundingClientRect(),scale=Math.min(box.width/1000,box.height/700);panX=drag.panX+(e.clientX-drag.x)/scale;panY=drag.panY+(e.clientY-drag.y)/scale;transform();});
     svg.addEventListener('pointerup',()=>drag=null);svg.addEventListener('pointercancel',()=>drag=null);
     svg.addEventListener('keydown',e=>{if(e.target!==svg)return;if(e.key==='+'||e.key==='='){changeZoom(1.15);e.preventDefault();}else if(e.key==='-'){changeZoom(1/1.15);e.preventDefault();}else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();panX+=e.key==='ArrowLeft'?30:e.key==='ArrowRight'?-30:0;panY+=e.key==='ArrowUp'?30:e.key==='ArrowDown'?-30:0;transform();}});
-    container.replaceChildren(svg);highlight(selected);
-    return {select(id){selected=id;highlight(id);},zoomIn(){changeZoom(1.2);},zoomOut(){changeZoom(1/1.2);},reset(){zoom=1;panX=panY=0;transform();},destroy(){container.replaceChildren();}};
+    function setColors(scheme){
+      for(const n of orbs.children){const point=indexed.get(n.dataset.id),entry=scheme.entry(point),circles=n.querySelectorAll('circle');
+        circles[0].setAttribute('fill',entry.color);circles[1].setAttribute('fill',fill(entry.color));circles[1].setAttribute('stroke',entry.color);
+        n.querySelector('title').textContent=`${point.label} · ${style(point.kind)[0]} · ${entry.label}`;
+        n.setAttribute('aria-label',`${point.label}, ${style(point.kind)[0]}, ${point.connections||0} connections, color: ${entry.label}`);
+      }
+      for(const line of lines.children)line.setAttribute('stroke',scheme.entry(indexed.get(line.dataset.source)).color);
+    }
+    container.replaceChildren(svg);setColors(options.colors||colorScheme(graph));highlight(selected);
+    return {setColors,select(id){selected=id;highlight(id);},zoomIn(){changeZoom(1.2);},zoomOut(){changeZoom(1/1.2);},reset(){zoom=1;panX=panY=0;transform();},destroy(){container.replaceChildren();}};
   }
-  const api={kinds,style,radius,filter,layout,mount};
+  const api={kinds,style,radius,filter,layout,colorScheme,mount};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.MnemosBrain=api;
 })(typeof window==='undefined'?globalThis:window);

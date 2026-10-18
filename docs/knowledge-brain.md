@@ -2,7 +2,13 @@
 
 Open **Knowledge brain** in the browser sidebar or the native Mac app. Mnemos displays your engineering knowledge as colored orbs within a brain silhouette. Choose **Network** for a conventional network layout.
 
-## What the orbs mean
+## Color mode
+
+The brain opens with **colors by type**. Turn on **Color by project** in the inspector to give a top-level project and its repositories, notes, workflows, and saved skills the same color. The legend updates to project names. Items assigned to several projects use **Shared across projects** in silver; items without membership use **No project assigned** in gray. Membership comes from recorded metadata, not guessed similarity. Colors are assigned from the full project catalog so filtering does not change them.
+
+Switching colors keeps the current selection, layout, sizes, filters, zoom, and pan. Turning the switch off restores type colors. This view preference is not written to notes or Obsidian settings; opening or refreshing the graph starts in type mode. The browser, embedded Mac view, and new static-reader exports share the control.
+
+## What the orbs mean (default type colors)
 
 | Orb | Color | Meaning |
 | --- | --- | --- |
