@@ -15,12 +15,12 @@ assert.match(source, startup, 'Update this helper harness if application startup
 const registrationTarget = {addEventListener() {}};
 const context = {
   document: {querySelector() { return registrationTarget; }, addEventListener() {}},
-  window: {KEYSTONE_STATIC: true, addEventListener() {}},
+  window: {MNEMOS_STATIC: true, addEventListener() {}},
   Intl, Date, setTimeout, clearTimeout,
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -136,4 +136,176 @@ test('Static recall stays within each supported character budget and cites its s
     assert.match(result.context, /Revision: revision-1/);
     assert.match(result.context, /Example content: yes/);
   }
+});
+
+
+test('Cloud handoff exports only explicitly selected source documents and excerpts', () => {
+  const pack = {format:'mnemos-context-pack-v1', query:'Recovery', generated_at:'2026-10-17',
+    documents:[{id:'chosen',title:'Chosen',revision:'rev-1',body:'Approved body'}, {id:'private',title:'Private',body:'Do not share this'}],
+    recall:{context:'Original context contains private content',items:[{id:'chosen',title:'Chosen',revision:'rev-1',excerpt:'Approved excerpt'}, {id:'private',title:'Private',excerpt:'Excluded excerpt'}]},
+    instructions:'Read the approved references.'};
+  const result = plain(h.selectedHandoffPack(pack, ['chosen']));
+  assert.deepEqual(result.documents.map(doc=>doc.id), ['chosen']);
+  assert.deepEqual(result.recall.items.map(item=>item.id), ['chosen']);
+  assert.match(result.recall.context, /Approved excerpt/);
+  assert.ok(!JSON.stringify(result).includes('Do not share'));
+  assert.ok(!JSON.stringify(result).includes('Excluded excerpt'));
+  assert.ok(!result.recall.context.includes('Original context'));
+});
+
+test('An empty cloud handoff selection contains no source content', () => {
+  const result = plain(h.selectedHandoffPack({query:'Task',documents:[{id:'a',body:'Sensitive'}],recall:{items:[{id:'a',excerpt:'Sensitive'}],context:'Sensitive'}}, []));
+  assert.deepEqual(result.documents, []);
+  assert.deepEqual(result.recall.items, []);
+  assert.ok(!JSON.stringify(result).includes('Sensitive'));
+});
+
+test('Markdown handoff preserves source revisions, status, body, and citations', () => {
+  const markdown = h.handoffMarkdown({query:'Deploy',generated_at:'2026-10-17',instructions:'Review first.',documents:[{id:'deploy',title:'Deployment',revision:'abc123',status:'draft',example:true,body:'## Check\nCheck health.',sources:['https://example.com/evidence']}]});
+  assert.match(markdown, /Revision: abc123/);
+  assert.match(markdown, /Status: draft/);
+  assert.match(markdown, /Example content: yes/);
+  assert.match(markdown, /## Check\nCheck health\./);
+  assert.match(markdown, /https:\/\/example.com\/evidence/);
+});
+
+const setupSource = fs.readFileSync(path.join(__dirname,'..','web','setup.js'),'utf8');
+assert.match(setupSource, startup, 'Update the helper harness if setup startup changes.');
+const setupContext = {document:{addEventListener(){}},window:{addEventListener(){}},setTimeout,clearTimeout};
+vm.createContext(setupContext);
+vm.runInContext(setupSource.replace(startup, '  globalThis.helpers={defaults,payloadFor,relocateDefaultBackup};\n})();'), setupContext);
+const setup = setupContext.helpers;
+
+test('First-run setup defaults to local assistant and a dedicated backup destination', () => {
+  const result = plain(setup.defaults({data_path:'/vault-data',backup:{provider:'local',destination:'/vault-data/backups'},obsidian:{installed:false}}));
+  assert.equal(result.assistant_mode, 'local');
+  assert.equal(result.data_path, '/vault-data');
+  assert.equal(result.backup.destination, '/vault-data/backups');
+  assert.equal(result.install_obsidian, true);
+});
+
+test('Existing Obsidian is reused and handoff mode requires no invented connection settings', () => {
+  const result = plain(setup.defaults({data_path:'/vault-data',author:'Alex',assistant_mode:'handoff',obsidian:{installed:true},backup:{provider:'rclone',remote:'remote:mnemos'}}));
+  assert.equal(result.install_obsidian, false);
+  assert.equal(result.assistant_mode, 'handoff');
+  assert.equal(result.backup.remote, 'remote:mnemos');
+  assert.ok(!('tunnel' in result));
+  assert.ok(!('token' in result));
+});
+
+test('Setup apply payload preserves explicit choices and includes no unrelated fields', () => {
+  const result = plain(setup.payloadFor({data_path:' /private/mnemos ',author:' Alex ',backup:{provider:'rclone',destination:' /local/cache ',remote:' remote:mnemos '},assistant_mode:'connected',install_obsidian:false,unexpected:'discard'}));
+  assert.deepEqual(result,{data_path:'/private/mnemos',author:'Alex',backup:{provider:'rclone',destination:'/local/cache',remote:'remote:mnemos'},assistant_mode:'connected',install_obsidian:false});
+});
+
+
+test('Import handler replaces an existing editor with a new draft before populating fields', async () => {
+  const fields = new Map();
+  const element = selector => {
+    if (!fields.has(selector)) fields.set(selector, {value:'',innerHTML:'',textContent:'',hidden:false,className:'',dispatchEvent(){},addEventListener(){}});
+    return fields.get(selector);
+  };
+  const fakeDocument = {querySelector:element,addEventListener(){}};
+  const importContext = {document:fakeDocument,window:{MNEMOS_STATIC:true,addEventListener(){},confirm(){return true;}},Event:class Event{},Intl,Date,setTimeout(){return 1;},clearTimeout(){}};
+  vm.createContext(importContext);
+  const exposed = source.replace(startup, '  globalThis.importHarness={state,importDocument,replaceRenderer(callback){renderCapture=callback;}};\n})();');
+  vm.runInContext(exposed,importContext);
+  const handler=importContext.importHarness;
+  handler.state.editing='existing-note';
+  element('#capture-form [name="id"]').value='existing-note';
+  let freshFormCreated=false;
+  // This boundary represents rebuilding the form; rendering itself is browser-tested.
+  handler.replaceRenderer(()=>{
+    assert.equal(handler.state.editing,null);
+    freshFormCreated=true;
+    element('#capture-form [name="id"]').value='';
+    handler.state.editorMode='write';
+  });
+  const file={size:100,name:'roundtrip.json',text:async()=>JSON.stringify({id:'existing-note',revision:'old',status:'verified',title:'Imported result',type:'context',body:'A new result',sources:['source-id revision abc'],related_ids:['source-id']})};
+  const input={files:[file],value:'roundtrip.json'};
+  await handler.importDocument({target:input});
+  assert.equal(freshFormCreated,true);
+  assert.equal(handler.state.editing,null);
+  assert.equal(element('#capture-form [name="id"]').value,'');
+  assert.equal(element('#doc-status').value,'draft');
+  assert.equal(element('#doc-title').value,'Imported result');
+  assert.equal(element('#doc-sources').value,'source-id revision abc');
+  assert.equal(element('#doc-related').value,'source-id');
+  assert.equal(input.value,'');
+});
+
+
+test('Copied handoff context keeps status and example labels within every selected budget', () => {
+  const documents=[{id:'verified-source',title:'Verified source',revision:'abc123',status:'verified',example:true}, {id:'draft-source',title:'Draft source',revision:'def456',status:'draft',example:false}];
+  for(const budget of [3000,6000,12000]){
+    const instructions='KEEP COMPLETE INSTRUCTIONS. '.repeat(1000);
+    const pack={query:'Continue recovery',instructions,documents,recall:{budget,items:documents.map(doc=>({id:doc.id,title:doc.title,revision:doc.revision,summary:'A source summary',excerpt:'Detailed source evidence. '.repeat(1000)}))}};
+    const result=plain(h.selectedHandoffPack(pack,documents.map(doc=>doc.id)));
+    assert.ok(result.recall.context.length<=budget);
+    assert.equal(result.recall.characters,result.recall.context.length);
+    assert.match(result.recall.context,/Status: verified · EXAMPLE CONTENT/);
+    assert.match(result.recall.context,/Status: draft/);
+    assert.equal(result.instructions,instructions);
+    assert.ok(!result.recall.context.includes('KEEP COMPLETE INSTRUCTIONS'));
+  }
+});
+
+test('Wikilinks resolve an extensionless full vault path when the document ID differs', () => {
+  h.state.data={documents:[{id:'capture-procedure-007',title:'Capture procedure',path:'Runbooks/first-capture.md'}]};
+  const rendered=h.markdown('<!-- mnemos:related:start -->\nSee [[Runbooks/first-capture|First capture]].\n<!-- mnemos:related:end -->\n\n<!-- other comment -->');
+  assert.match(rendered,/data-document="capture-procedure-007"/);
+  assert.match(rendered,/>First capture<\/a>/);
+  assert.ok(!rendered.includes('mnemos:related:'));
+  assert.match(rendered,/&lt;!-- other comment --&gt;/);
+});
+
+test('Windows backup defaults follow the chosen data folder across slash conventions', () => {
+  assert.equal(setup.relocateDefaultBackup('C:\\old\\data','D:\\new\\data','C:/old/data/backups'),'D:\\new\\data\\backups');
+  assert.equal(setup.relocateDefaultBackup('C:/old/data/','D:/new/data','C:\\old\\data\\backups'),'D:/new/data/backups');
+  assert.equal(setup.relocateDefaultBackup('C:\\old\\data','D:\\new\\data','E:\\separate-backups'),'E:\\separate-backups');
+});
+
+function pasteHarness() {
+  const fields=new Map();
+  const element=selector=>{
+    if(!fields.has(selector))fields.set(selector,{value:'',innerHTML:'',textContent:'',hidden:false,className:'',dispatchEvent(){},addEventListener(){}});
+    return fields.get(selector);
+  };
+  let saves=0,renders=0;
+  const environment={document:{querySelector:element,addEventListener(){}},window:{MNEMOS_STATIC:true,addEventListener(){},confirm(){return true;}},Event:class Event{},Intl,Date,setTimeout(){return 1;},clearTimeout(){},fetch(){saves++;throw new Error('Preview must not save');}};
+  vm.createContext(environment);
+  vm.runInContext(source.replace(startup,'  globalThis.pasteHarness={state,previewPastedDraft,replaceRenderer(callback){renderCapture=callback;}};\n})();'),environment);
+  const handler=environment.pasteHarness;
+  handler.state.editing='existing-page';
+  element('#capture-form [name="id"]').value='existing-page';
+  handler.replaceRenderer(()=>{renders++;assert.equal(handler.state.editing,null);element('#capture-form [name="id"]').value='';});
+  return {handler,element,saves:()=>saves,renders:()=>renders};
+}
+
+test('Pasted JSON preview creates a new draft, preserves source references, and never saves', () => {
+  const app=pasteHarness();
+  app.element('#pasted-draft').value=JSON.stringify({id:'existing-page',revision:'old',status:'verified',type:'context',title:'Roundtrip result',body:'## Evidence\nObserved success.',sources:['source-1 revision abc'],related_ids:['source-1']});
+  app.handler.previewPastedDraft();
+  assert.equal(app.handler.state.editing,null);
+  assert.equal(app.element('#capture-form [name="id"]').value,'');
+  assert.equal(app.element('#doc-title').value,'Roundtrip result');
+  assert.equal(app.element('#doc-status').value,'draft');
+  assert.equal(app.element('#doc-sources').value,'source-1 revision abc');
+  assert.equal(app.element('#doc-related').value,'source-1');
+  assert.equal(app.handler.state.editorMode,'preview');
+  assert.equal(app.element('#editor-field').hidden,true);
+  assert.equal(app.element('#editor-preview').hidden,false);
+  assert.match(app.element('#editor-preview').innerHTML,/<h2>Evidence<\/h2>/);
+  assert.equal(app.saves(),0);
+});
+
+test('Pasted malformed JSON leaves the current editor intact and reports the error', () => {
+  const app=pasteHarness();
+  app.element('#pasted-draft').value='{broken';
+  app.handler.previewPastedDraft();
+  assert.equal(app.handler.state.editing,'existing-page');
+  assert.equal(app.element('#capture-form [name="id"]').value,'existing-page');
+  assert.equal(app.renders(),0);
+  assert.equal(app.saves(),0);
+  assert.match(app.element('#paste-error').innerHTML,/notice error/);
 });

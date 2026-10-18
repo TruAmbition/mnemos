@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mnemos Orchestrate"
+  short_description: "Plan repeatable work from source-backed microtasks"
+  default_prompt: "Use $mnemos-orchestrate to turn this procedure into a source-backed dependency plan."

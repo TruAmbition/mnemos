@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#192e36">
+  <title>Local setup · Mnemos</title>
+  <meta name="description" content="Set up a dedicated Mnemos knowledge vault and choose your storage and assistant workflow.">
+  <link rel="stylesheet" href="style.css">
+  <script src="setup.js" defer></script>
+</head>
+<body class="setup-page">
+  <a class="skip-link" href="#setup-main">Skip to setup</a>
+  <div class="setup-shell">
+    <aside class="setup-sidebar">
+      <a class="brand" href="/" aria-label="Mnemos home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 25V7h5l5 9 5-9h5v18h-6V16l-4 7-4-7v9z"/></svg></span><span>mnemos<span class="brand-caption">ENGINEERING KNOWLEDGE</span></span></a>
+      <div class="setup-intro"><span class="eyebrow">MAKE ROOM FOR WHAT YOU KNOW</span><h1>Good work.<br>A lasting memory.</h1><p>A dedicated home for your notes, decisions, and repeatable work.</p></div>
+      <ol class="setup-progress" id="setup-progress" aria-label="Setup progress"></ol>
+      <div class="setup-sidebar-foot"><span class="storage-indicator"></span> On your computer. In your control.</div>
+    </aside>
+    <main class="setup-main" id="setup-main" tabindex="-1">
+      <header class="setup-topbar"><span><span class="storage-indicator"></span> LOCAL SETUP</span><a href="/">Open library <span aria-hidden="true">↗</span></a></header>
+      <div id="setup-content"><div class="initial-loading"><span class="loader"></span><h2>Checking your workspace</h2><p>Looking for an existing vault and Obsidian installation.</p></div></div>
+      <footer class="setup-footer">Plain Markdown. Your own storage. Ready for the next task.</footer>
+    </main>
+  </div>
+  <div id="setup-toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Assistant connections and context handoff
 
-Keystone provides a local MCP server and a CLI. Both use the same dedicated vault. A local desktop connection does not automatically make the vault available to a separately hosted chat.
+Mnemos provides a local MCP server and a CLI. Both use the same dedicated vault. Local clients need no tunnel. A cloud chat can instead use the [file handoff workflow](cloud-handoff.md), which also needs no tunnel and grants no direct computer access. A local desktop connection does not automatically make the vault available to a separately hosted chat.
 
 ## Project setup for Codex and Claude Code
 
@@ -10,20 +10,30 @@ From the source checkout, run:
 python3 scripts/install_agents.py --data ./data --client both
 ```
 
-Choose `--client codex` or `--client claude` for one client. Add `--project /absolute/path/to/working-project` to configure another workspace. The installer writes only project-local Codex or Claude Code configuration and skill copies. It preserves unrelated MCP servers and refuses conflicting Keystone definitions. Reopen and trust the project in the client before checking tool discovery. This does not configure Claude Desktop; use its separate example below.
+Choose `--client codex` or `--client claude` for one client. Add `--project /absolute/path/to/working-project` to configure another workspace. The installer writes only project-local Codex or Claude Code configuration and skill copies. It preserves unrelated MCP servers and reuses a matching legacy `keystone` entry without adding a duplicate. Conflicting definitions under either name are left unchanged. Reopen and trust the project in the client before checking tool discovery. This does not configure Claude Desktop; use its separate example below.
+
+## Portable skills without a connection
+
+```sh
+python3 scripts/install_agents.py --skills-only --client both
+```
+
+This mode needs no data directory, does not inspect or modify MCP settings, and copies only bundled skills into the chosen project. Use `--project` and `--client` to narrow the destination. The portal offers `/api/skills/export` to owners and authors, or run `python3 -m mnemos skills-export --output mnemos-skills.zip`. The archive contains only named source skill folders and their references. It contains no private notes, access tokens, or account credentials.
+
+For a cloud chat, upload the relevant supported skill files and selected context under your organization's data rules. A skill explains a routine; it does not install a connection or confer access to a local path.
 
 ## Codex local connection
 
 Add the local server with absolute paths, replacing the illustrative paths below:
 
 ```sh
-codex mcp add keystone -- python3 /absolute/path/to/keystone/scripts/mcp_server.py --data /absolute/path/to/private-data
+codex mcp add mnemos -- python3 /absolute/path/to/mnemos/scripts/mcp_server.py --data /absolute/path/to/private-data
 codex mcp list
 ```
 
 Use the actual Python 3.11+ executable if the client cannot resolve `python3`. Configure this in the environment that can access the private data directory. Codex supports local stdio server commands and arguments; hosted ChatGPT does not read local Codex configuration files. [Official MCP configuration guidance](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 
-Copy desired folders from `skills/` into the working project's `.agents/skills/`, preserving existing content. For example, the destination for capture is `.agents/skills/keystone-capture/SKILL.md`. Project discovery is documented in the [official skills guide](https://learn.chatgpt.com/docs/build-skills).
+Copy desired folders from `skills/` into the working project's `.agents/skills/`, preserving existing content. For example, the destination for capture is `.agents/skills/mnemos-capture/SKILL.md`. Project discovery is documented in the [official skills guide](https://learn.chatgpt.com/docs/build-skills).
 
 ## Claude Desktop local connection
 
@@ -34,10 +44,10 @@ In the client's developer MCP configuration, merge this named entry with existin
 ```json
 {
   "mcpServers": {
-    "keystone": {
+    "mnemos": {
       "command": "python3",
       "args": [
-        "/absolute/path/to/keystone/scripts/mcp_server.py",
+        "/absolute/path/to/mnemos/scripts/mcp_server.py",
         "--data",
         "/absolute/path/to/private-data"
       ]
@@ -46,7 +56,7 @@ In the client's developer MCP configuration, merge this named entry with existin
 }
 ```
 
-Use the absolute Python executable when needed, and JSON-escape Windows backslashes. Restart the client after saving and confirm the Keystone tools are available. The official MCP guide describes the `mcpServers`, `command`, and `args` configuration pattern and local-server troubleshooting. [Local MCP connection guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
+Use the absolute Python executable when needed, and JSON-escape Windows backslashes. Restart the client after saving and confirm the Mnemos tools are available. The official MCP guide describes the `mcpServers`, `command`, and `args` configuration pattern and local-server troubleshooting. [Local MCP connection guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
 
 Only register a data directory the assistant should be able to read and contribute to. The local process can read the library, and its capture tool can save drafts. This setup does not modify the client's other server entries or install skills into other applications automatically.
 
@@ -66,15 +76,8 @@ Recall accepts a character budget, clamped to 500–24,000 characters. It return
 
 ## Cloud chat without a local connection
 
-ChatGPT can also reach this local stdio connector through [Secure MCP Tunnel](chatgpt-tunnel.md), subject to OpenAI account and workspace access. The tunnel client must remain running on the machine holding the vault. This is separate from a public remote MCP endpoint and does not connect Claude's web client.
+Use [Cloud handoff](cloud-handoff.md) to download a bounded context pack, optionally select full source documents, and provide the chosen files to a cloud chat yourself. Supply `mnemos-handoff` to obtain one **new draft** capture JSON. Import that JSON, or paste it using **Paste JSON instead**, in Capture knowledge, inspect its preview and source links, and save it locally. The portal's file import does not update existing notes.
 
-Use a manual exchange when ChatGPT, Claude, or Codex cannot access the installation:
+Source IDs and revisions preserve provenance; `related_ids` lets Mnemos add links to existing Obsidian notes. A useful handoff states goals, current state, constraints, decisions, failed approaches, unknowns, next actions, and evidence. It excludes secrets and does not claim to summarize inaccessible older chats. Uploads still follow your organization's data policies.
 
-1. Ask the assistant to export the accessible task as a draft `context` document using the [capture JSON format](../skills/keystone-capture/references/capture-format.md).
-2. Save the returned JSON privately and import it with `python3 -m keystone capture --data ./data --file /path/to/context.json`.
-3. Before a new session, run `python3 -m keystone recall --data ./data "relevant project" --budget 6000` or use the reader's recall interface.
-4. Provide that bounded context to the new assistant. Retrieve full source documents when the excerpts are insufficient.
-
-A useful context document states the goal, current state, constraints, decisions and rationale, failed approaches, unknowns, next actions, and sources. It should distinguish observed results from inference and omit credentials. It should not claim to summarize inaccessible older chats.
-
-For a private ChatGPT custom GPT, the alternative [Actions integration](cloud-chatgpt.md) can remove the manual step once you host the HTTP API over HTTPS, configure its dedicated credential, and verify the connection. This Actions route has not been tested end to end. A public authenticated remote MCP connector for browser-based Claude remains future work. Hosting the reader alone does not configure an assistant, and connecting one assistant does not connect every other assistant automatically.
+For environments that explicitly want an ongoing cloud connection, the separately configured [Secure MCP Tunnel](chatgpt-tunnel.md) and [hosted GPT Actions](cloud-chatgpt.md) routes remain optional. Selecting a setup mode or installing a skill does not create or verify either connection. Existing tunnel profiles and credentials are not altered by the Mnemos rename. A public authenticated remote MCP connector for browser-based Claude remains future work.

@@ -3,9 +3,9 @@ id: "example-server-access"
 title: "Diagnose reader access problems"
 type: "troubleshooting"
 status: "verified"
-project: "Keystone example"
-tags: ["keystone", "reader", "access", "troubleshooting"]
-author: "Keystone examples"
+project: "Mnemos example"
+tags: ["mnemos", "reader", "access", "troubleshooting"]
+author: "Mnemos examples"
 updated: "2026-10-17"
 verified: "2026-10-17"
 summary: "Distinguish a stopped server, authentication failure, and unavailable documents."

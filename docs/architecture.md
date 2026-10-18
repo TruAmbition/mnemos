@@ -18,7 +18,7 @@ Assistant skills ── local MCP or CLI ──► Dedicated Markdown vault
 
 Markdown files are the durable source of truth. The application reads them directly; there is no separate database that must be synchronized to make a saved document searchable. Templates are excluded from search. Workflow JSON references stable document IDs rather than depending on a human-readable title remaining unchanged.
 
-The assistant and application have separate jobs. An assistant interprets accessible work, drafts useful knowledge, and reasons about plans. Keystone validates structured captures, saves documents, retrieves matching sources, and produces dependency plans. The application does not contain a model inference engine.
+The assistant and application have separate jobs. An assistant interprets accessible work, drafts useful knowledge, and reasons about plans. Mnemos validates structured captures, saves documents, retrieves matching sources, and produces dependency plans. The application does not contain a model inference engine.
 
 ## Distribution and private state
 
@@ -36,7 +36,7 @@ The vault is always `vault/` under the selected data directory. Initialization r
 
 ## Knowledge model
 
-Every document carries an ID, title, type, status, project, tags, author, timestamps, and summary. Optional `sources` and `related_ids` preserve provenance and links. A content revision is derived from the saved file and used to detect stale updates. `example: true` identifies illustrative seed content and remains visible to readers.
+New documents use stable IDs in their filenames. Every document carries an ID, title, type, status, project, tags, author, timestamps, and summary. Optional `sources` and `related_ids` preserve provenance and links. When a related ID resolves to an existing document, saving adds a managed Related knowledge section with an Obsidian link to that source. Unresolved IDs stay metadata; the system does not fabricate target notes. Obsidian backlinks and its graph can use the resulting links. A content revision is derived from the saved file and used to detect stale updates. `example: true` identifies illustrative seed content and remains visible to readers.
 
 The common types serve different purposes:
 
@@ -60,11 +60,23 @@ Keyword search matches titles, body text, summaries, projects, and tags. Recall 
 
 Local MCP exposes search, document reads, draft capture, recall, and workflow planning. It starts as a subprocess of a compatible assistant client. The MCP process uses local filesystem access and has author-level capture behavior. It is not the HTTP reader server and is not a remotely authenticated cloud connector. A separate [ChatGPT Actions schema](cloud-chatgpt.md) exposes a limited set of existing HTTP operations after the user hosts HTTPS and configures a dedicated credential; it is prepared integration material, not an automatically deployed connection.
 
+## Guided setup and portable handoff
+
+The launcher serves local `/setup.html` for choosing the author, dedicated data folder, backup destination, Obsidian setup, and assistant mode. It reports actual local readiness separately from any external connection status. It does not automatically install credentials or connect cloud accounts.
+
+Cloud handoff exports bounded recall excerpts and source metadata. Full source bodies are optional and explicitly selected, with a separate size limit. The user chooses what to upload. The `mnemos-handoff` skill turns those supplied sources and accessible task evidence into a single new draft capture JSON. Portal import previews it and creates a new draft; it does not overwrite an existing document. Source-only skill export needs no initialized vault and never packages private runtime data.
+
+Neither the local MCP route nor the file handoff needs a tunnel. Optional existing tunnel and hosted Action integrations remain separate. A skill installed in a cloud environment does not confer access to the user's Mac.
+
+## Name compatibility
+
+Mnemos is the canonical package and product name. `python -m keystone` remains an alias, and the existing checkout directory is deliberately not renamed. Stable backup manifest names, storage lock names, and tunnel profile identities remain compatible. Matching legacy project MCP entries are reused; the Claude Desktop installer can rename an equivalent entry only on explicit apply with backup.
+
 ## Collaboration and trust
 
 The first deployment supports one owner with reader credentials. Named author credentials allow additional contributors without changing the document format. Roles apply to the library as a whole. There are no per-project access policies, enterprise single sign-on, review queues, or tamper-evident audit guarantees in this version.
 
-Updates check a supplied source revision, cross-process storage locks serialize Keystone writers, and writes use temporary files and replacement to reduce partial writes. These controls are not a distributed transaction system. Run one shared application instance per data directory and avoid simultaneous edits to the same file from Obsidian, independent scripts, or sync software. Treat backups as recovery points; the application is not a full revision-history browser.
+Updates check a supplied source revision, cross-process storage locks serialize Mnemos writers, and writes use temporary files and replacement to reduce partial writes. These controls are not a distributed transaction system. Run one shared application instance per data directory and avoid simultaneous edits to the same file from Obsidian, independent scripts, or sync software. Treat backups as recovery points; the application is not a full revision-history browser.
 
 ## From documentation to agentic workflows
 
@@ -76,7 +88,7 @@ The orchestration skill adds execution discipline to an assistant that has suita
 
 These are future extensions, not features claimed by this release:
 
-1. **Remote assistant connection.** An authenticated remote MCP transport, suitable identity and authorization, hosting, and end-to-end tests for intended ChatGPT and Claude cloud clients. Provider-supported private tunnels may be an alternative integration path. No automatic access to all chat history is implied.
+1. **Broader cloud account integration.** A managed authenticated remote MCP transport, per-user identity and authorization, and client-specific end-to-end tests. Local MCP, portable file handoff, optional tunnel helpers, and the hosted Action schema already provide distinct connection choices. No route implies automatic access to all chat history.
 2. **Meaning-based retrieval.** An optional embedding index alongside exact keyword search, with source citations, refresh behavior, and an explicit choice of local or hosted inference.
 3. **Stronger collaboration.** Review requests, durable change history, fine-grained permissions, and audit events suitable for a larger team.
 4. **Managed operations.** Scheduled snapshots, retention policies, automated recovery drills, service packaging, and storage-provider setup assistance.

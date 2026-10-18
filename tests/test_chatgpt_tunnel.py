@@ -10,7 +10,7 @@ import warnings
 from contextlib import redirect_stdout
 from unittest.mock import Mock, patch
 
-from keystone.core import initialize
+from mnemos.core import initialize
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('connect_chatgpt', ROOT / 'scripts/connect_chatgpt.py')
@@ -112,7 +112,7 @@ class ChatGPTTunnelTests(unittest.TestCase):
         process = Mock(stdout=iter(['unexpected output ' + secret + '\n']))
         process.wait.return_value = 0
         output = io.StringIO()
-        with patch.dict(os.environ, {'KEYSTONE_TUNNEL_API_KEY': secret}), \
+        with patch.dict(os.environ, {'MNEMOS_TUNNEL_API_KEY': secret}), \
                 patch.object(connector.subprocess, 'Popen', return_value=process) as launch, redirect_stdout(output):
             self.assertEqual(connector.run_connected(self.data, '/tunnel-client', 'doctor'), 0)
         args, kwargs = launch.call_args

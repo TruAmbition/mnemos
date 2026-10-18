@@ -1,1 +1,1 @@
-window.KEYSTONE_STATIC = false;
+window.MNEMOS_STATIC = false;

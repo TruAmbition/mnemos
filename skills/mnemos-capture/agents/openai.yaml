@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mnemos Capture"
+  short_description: "Capture work and context as reusable knowledge"
+  default_prompt: "Use $mnemos-capture to document this work as a source-backed draft."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mnemos Handoff"
+  short_description: "Turn supplied context into a portable draft"
+  default_prompt: "Use $mnemos-handoff with the supplied context pack and return one source-backed draft JSON for local review."

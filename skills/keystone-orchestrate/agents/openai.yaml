@@ -1,4 +1,0 @@
-interface:
-  display_name: "Keystone Orchestrate"
-  short_description: "Plan repeatable work from source-backed microtasks"
-  default_prompt: "Use $keystone-orchestrate to turn this procedure into a source-backed dependency plan."

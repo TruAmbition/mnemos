@@ -20,10 +20,10 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from keystone.core import load_config
+from mnemos.core import load_config
 
 TUNNEL_ID = re.compile(r'tunnel_(?:[a-z0-9]{4}_)?[a-z0-9]{32}\Z')
-PROFILE = 'keystone'
+PROFILE = 'keystone'  # Stable runtime profile identity across the product rename.
 ALLOWED_ENV = {
     'PATH', 'HOME', 'USERPROFILE', 'SystemRoot', 'SYSTEMROOT', 'WINDIR',
     'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE',
@@ -52,7 +52,7 @@ def preflight(data):
     command = [sys.executable, str(ROOT / 'scripts/mcp_server.py'), '--data', str(data)]
     requests = [
         {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {
-            'protocolVersion': '2025-03-26', 'clientInfo': {'name': 'keystone-tunnel-check', 'version': '1'},
+            'protocolVersion': '2025-03-26', 'clientInfo': {'name': 'mnemos-tunnel-check', 'version': '1'},
             'capabilities': {}}},
         {'jsonrpc': '2.0', 'method': 'notifications/initialized'},
         {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'},
@@ -64,9 +64,9 @@ def preflight(data):
         listed = next(item['result']['tools'] for item in replies if item.get('id') == 2)
         tools = {item['name'] for item in listed}
     except (ValueError, KeyError, StopIteration, TypeError):
-        raise ValueError('Keystone MCP preflight failed. Check the data path and Python installation.') from None
+        raise ValueError('Mnemos MCP preflight failed. Check the data path and Python installation.') from None
     if result.returncode or not {'recall_context', 'capture_document'} <= tools:
-        raise ValueError('Keystone MCP preflight failed to expose capture and recall tools.')
+        raise ValueError('Mnemos MCP preflight failed to expose capture and recall tools.')
     # tunnel-client parses a command string; shlex quotes spaces and special characters.
     return shlex.join(command)
 
@@ -135,10 +135,10 @@ def read_receipt(data):
 
 
 def runtime_key():
-    key = os.environ.get('KEYSTONE_TUNNEL_API_KEY') or os.environ.get('CONTROL_PLANE_API_KEY')
+    key = os.environ.get('MNEMOS_TUNNEL_API_KEY') or os.environ.get('KEYSTONE_TUNNEL_API_KEY') or os.environ.get('CONTROL_PLANE_API_KEY')
     if not key:
         if not sys.stdin.isatty():
-            raise ValueError('Run in a terminal for hidden key entry, or provide KEYSTONE_TUNNEL_API_KEY through a secure environment.')
+            raise ValueError('Run in a terminal for hidden key entry, or provide MNEMOS_TUNNEL_API_KEY through a secure environment.')
         with warnings.catch_warnings():
             warnings.simplefilter('error', getpass.GetPassWarning)
             try:
@@ -192,11 +192,11 @@ def check_and_run(data, binary):
     doctor = command_for(data, binary, 'doctor')
     run = command_for(data, binary, 'run')
     key = runtime_key()
-    print('Checking the Keystone connection...', flush=True)
+    print('Checking the Mnemos connection...', flush=True)
     result = run_command(doctor, key)
     if result:
         return result
-    print('Starting Keystone for ChatGPT. Keep this terminal open; press Control-C to disconnect.', flush=True)
+    print('Starting Mnemos for ChatGPT. Keep this terminal open; press Control-C to disconnect.', flush=True)
     return run_command(run, key)
 
 
@@ -238,7 +238,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['prepare', 'doctor', 'run', 'connect', 'status'])
     parser.add_argument('--data', type=Path, default=ROOT / 'data')
-    parser.add_argument('--binary', default=os.environ.get('KEYSTONE_TUNNEL_CLIENT'),
+    parser.add_argument('--binary', default=os.environ.get('MNEMOS_TUNNEL_CLIENT') or os.environ.get('KEYSTONE_TUNNEL_CLIENT'),
                         help='Official executable; defaults to data/tools/tunnel-client or PATH.')
     parser.add_argument('--tunnel-id', help='Nonsecret tunnel ID; required for prepare.')
     args = parser.parse_args()
@@ -258,10 +258,10 @@ def main():
         print(json.dumps(result, indent=2))
         return 0 if args.action != 'status' or result['healthy'] and result['ready'] else 1
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
-        print('Keystone connection: ' + str(error), file=sys.stderr)
+        print('Mnemos connection: ' + str(error), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
-        print('\nKeystone connection cancelled.', file=sys.stderr)
+        print('\nMnemos connection cancelled.', file=sys.stderr)
         return 130
 
 

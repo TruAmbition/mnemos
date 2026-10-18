@@ -3,9 +3,9 @@ id: "example-first-capture"
 title: "Capture a documented engineering task"
 type: "runbook"
 status: "verified"
-project: "Keystone example"
-tags: ["keystone", "capture", "runbook"]
-author: "Keystone examples"
+project: "Mnemos example"
+tags: ["mnemos", "capture", "runbook"]
+author: "Mnemos examples"
 updated: "2026-10-17"
 verified: "2026-10-17"
 summary: "Turn accessible task evidence into a draft with context, steps, and verification."
@@ -22,7 +22,7 @@ Use after completing meaningful work that another engineer may need to repeat or
 
 ## Prerequisites
 
-- An initialized Keystone data directory.
+- An initialized Mnemos data directory.
 - Access to the source work and permission to document it.
 - The project, target environment, and affected component identified.
 - A working assistant with the bundled capture skill, or a manually prepared capture JSON file.

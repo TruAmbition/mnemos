@@ -46,4 +46,4 @@ Describe the next bounded steps and what verification each needs.
 
 ## Sources
 
-Link accessible task artifacts and related Keystone IDs with current revisions.
+Link accessible task artifacts and related Mnemos IDs with current revisions.

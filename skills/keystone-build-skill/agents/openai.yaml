@@ -1,4 +1,0 @@
-interface:
-  display_name: "Keystone Skill Builder"
-  short_description: "Build reusable skills from verified documentation"
-  default_prompt: "Use $keystone-build-skill to create a scoped skill from verified Keystone sources."

@@ -6,8 +6,8 @@ import threading
 import unittest
 from pathlib import Path
 
-from keystone import core
-from keystone.server import KeystoneServer
+from mnemos import core
+from mnemos.server import MnemosServer
 
 
 class ServerTests(unittest.TestCase):
@@ -23,7 +23,7 @@ class ServerTests(unittest.TestCase):
                 child.unlink()
         self.document = core.save_document(self.data, {"id": "approved", "title": "Approved note", "body": "Safe instructions", "status": "verified"})
         core.save_document(self.data, {"id": "draft", "title": "Unreviewed note", "body": "Unreviewed details"})
-        self.server = KeystoneServer(("127.0.0.1", 0), self.data)
+        self.server = MnemosServer(("127.0.0.1", 0), self.data)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.addCleanup(self.stop_server)
@@ -104,8 +104,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request(headers={"Cookie": session_cookie})[2]["session"]["role"], "anonymous")
 
     def test_network_bind_requires_explicit_allowed_host(self):
-        with self.assertRaises(core.KeystoneError):
-            KeystoneServer(("0.0.0.0", 0), self.data)
+        with self.assertRaises(core.MnemosError):
+            MnemosServer(("0.0.0.0", 0), self.data)
 
     def test_require_auth_disables_local_owner_for_reverse_proxy(self):
         self.server.local_owner = False
@@ -119,7 +119,7 @@ class ServerTests(unittest.TestCase):
         payload = dict(self.document, body="New content")
         self.assertEqual(self.request("POST", "/api/documents", payload)[0], 200)
         self.assertEqual(self.request("POST", "/api/documents", payload)[0], 409)
-        for path in ["/../keystone/core.py", "/%2e%2e/keystone/core.py", "/.git/config"]:
+        for path in ["/../mnemos/core.py", "/%2e%2e/mnemos/core.py", "/.git/config"]:
             self.assertIn(self.request(path=path)[0], {400, 404})
 
 

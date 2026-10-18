@@ -8,10 +8,10 @@ import subprocess
 import unittest
 from unittest.mock import patch
 import zipfile
-from keystone.backup import create_backup, list_backups, restore_backup, snapshot_bytes
-from keystone.core import initialize, issue_token, save_document, update_settings
-from keystone.export import build_reader, vault_archive
-from keystone.recall import recall, recall_documents
+from mnemos.backup import create_backup, list_backups, restore_backup, snapshot_bytes
+from mnemos.core import initialize, issue_token, save_document, update_settings
+from mnemos.export import build_reader, vault_archive
+from mnemos.recall import recall, recall_documents
 
 class BackupTests(unittest.TestCase):
     def setUp(self):
@@ -66,8 +66,8 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 create_backup(self.data)
     def test_cloud_failure_retains_local_snapshot_and_history(self):
-        update_settings(self.data, {'backup': {'provider': 'rclone', 'destination': str(self.base / 'snapshots'), 'remote': 'encrypted:keystone'}})
-        with patch('keystone.backup.shutil.which', return_value='/usr/bin/rclone'), patch('keystone.backup.subprocess.run', side_effect=subprocess.CalledProcessError(1, ['rclone'])):
+        update_settings(self.data, {'backup': {'provider': 'rclone', 'destination': str(self.base / 'snapshots'), 'remote': 'encrypted:mnemos'}})
+        with patch('mnemos.backup.shutil.which', return_value='/usr/bin/rclone'), patch('mnemos.backup.subprocess.run', side_effect=subprocess.CalledProcessError(1, ['rclone'])):
             with self.assertRaisesRegex(ValueError, 'Local snapshot retained'):
                 create_backup(self.data)
         history = list_backups(self.data)
@@ -79,7 +79,7 @@ class BackupTests(unittest.TestCase):
         restore_backup(local, self.base / 'recovery')
     def test_cloud_arguments_do_not_invoke_a_shell(self):
         update_settings(self.data, {'backup': {'provider': 'rclone', 'destination': str(self.base / 'snapshots'), 'remote': 'encrypted:folder with spaces'}})
-        with patch('keystone.backup.shutil.which', return_value='/usr/bin/rclone'), patch('keystone.backup.subprocess.run') as run:
+        with patch('mnemos.backup.shutil.which', return_value='/usr/bin/rclone'), patch('mnemos.backup.subprocess.run') as run:
             result = create_backup(self.data)
         self.assertEqual(result['status'], 'complete')
         self.assertEqual(run.call_count, 2)
@@ -153,7 +153,7 @@ class RecallTests(unittest.TestCase):
 class MCPTests(unittest.TestCase):
     def test_capture_recall_protocol(self):
         path = Path(__file__).resolve().parents[1] / 'scripts/mcp_server.py'
-        spec = importlib.util.spec_from_file_location('keystone_mcp', path)
+        spec = importlib.util.spec_from_file_location('mnemos_mcp', path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as temporary:

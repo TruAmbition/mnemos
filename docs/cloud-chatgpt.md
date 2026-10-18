@@ -1,17 +1,19 @@
-# Connect a private ChatGPT GPT through Actions
+# Optional hosted ChatGPT Actions connection
+
+For a cloud workflow without hosting or a tunnel, use [portable file handoffs](cloud-handoff.md). This guide is for users who explicitly choose an ongoing hosted connection.
 
 For a vault that stays on your computer, use the [Secure MCP Tunnel connection](chatgpt-tunnel.md) when your account has the required access. The Actions option below is for a separately hosted HTTPS installation.
 
-The supplied [OpenAPI schema](../integrations/chatgpt-actions.openapi.json) describes three existing Keystone HTTP operations: recall context, read a document, and capture a draft. It provides a setup path for a custom GPT after you host Keystone at an HTTPS address reachable by ChatGPT. **This integration is prepared, not deployed or tested end to end with your ChatGPT account.**
+The supplied [OpenAPI schema](../integrations/chatgpt-actions.openapi.json) describes three existing Mnemos HTTP operations: recall context, read a document, and capture a draft. It provides a setup path for a custom GPT after you host Mnemos at an HTTPS address reachable by ChatGPT. **This integration is prepared, not deployed or tested end to end with your ChatGPT account.**
 
 GPT Actions use an OpenAPI schema and configured authentication to call an API. The official setup guide explains schema import and action testing. [GPT Actions setup](https://developers.openai.com/api/docs/actions/getting-started)
 
 ## Host the private library
 
-Choose a host and HTTPS domain you control. Configure its certificate, reverse proxy, firewall, and service supervision; Keystone does not provision them. The endpoint must be reachable from ChatGPT, so a loopback address alone is insufficient. Start the service behind the proxy with authentication required:
+Choose a host and HTTPS domain you control. Configure its certificate, reverse proxy, firewall, and service supervision; Mnemos does not provision them. The endpoint must be reachable from ChatGPT, so a loopback address alone is insufficient. Start the service behind the proxy with authentication required:
 
 ```sh
-python3 -m keystone serve --data /absolute/path/to/private-data \
+python3 -m mnemos serve --data /absolute/path/to/private-data \
   --host 127.0.0.1 --port 4318 --require-auth \
   --public-host knowledge.example.com
 ```
@@ -24,7 +26,7 @@ Replace the illustrative hostname with your actual host. Preserve the original H
 2. For your own private GPT that captures and recalls work, issue a dedicated **author** credential on the host:
 
    ```sh
-   python3 -m keystone token --data /absolute/path/to/private-data --role author --author "Private ChatGPT capture"
+   python3 -m mnemos token --data /absolute/path/to/private-data --role author --author "Private ChatGPT capture"
    ```
 
 3. In the GPT's Actions configuration, import the modified schema. Select API-key authentication with Bearer authorization, and enter the credential in the authentication field. Never use an owner token. The official GitHub Actions example documents API-key Bearer setup. [Bearer authentication example](https://developers.openai.com/cookbook/examples/chatgpt/gpt_actions_library/gpt_action_github)
@@ -37,7 +39,7 @@ The schema exposes no administration, backup, or verification endpoint. Capture 
 
 For a GPT intended only to answer from published knowledge, issue a **reader** token and remove the entire `/api/documents` path containing the POST operation from your schema copy. Keep `/api/documents/{id}` and `/api/recall`. Reader credentials see verified documents only and cannot save captures.
 
-A configured static API key represents the same vault-wide identity for every person who can use that GPT. It does not give each user their own Keystone account or project permissions. Keep a capture GPT private; share a read-only GPT only with people authorized to read all content visible to its reader credential. Per-user authentication and fine-grained access are future integration work.
+A configured static API key represents the same vault-wide identity for every person who can use that GPT. It does not give each user their own Mnemos account or project permissions. Keep a capture GPT private; share a read-only GPT only with people authorized to read all content visible to its reader credential. Per-user authentication and fine-grained access are future integration work.
 
 ## Scope and limits
 

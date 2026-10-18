@@ -5,8 +5,8 @@
 Run one application process for the private data directory. The default binds to `127.0.0.1:4318`, and local access is treated as the owner. On a shared machine, issue an owner token and require authentication:
 
 ```sh
-python3 -m keystone token --data ./data --role owner --author "Library owner"
-python3 -m keystone serve --data ./data --require-auth
+python3 -m mnemos token --data ./data --role owner --author "Library owner"
+python3 -m mnemos serve --data ./data --require-auth
 ```
 
 The library is plain local data. Use operating-system account permissions and disk protection appropriate to its contents. The default is not encrypted vault storage.
@@ -16,7 +16,7 @@ The library is plain local data. Use operating-system account permissions and di
 Keep private runtime data on a controlled host. Use HTTPS for remote access, preserve the original Host header, and allow only your intended hostnames. Behind a reverse proxy, start the app with `--require-auth` even if its bind address is loopback; otherwise proxy requests would be treated as local-owner requests.
 
 ```sh
-python3 -m keystone serve --data /srv/keystone-private \
+python3 -m mnemos serve --data /srv/mnemos-private \
   --host 127.0.0.1 --port 4318 --require-auth \
   --public-host knowledge.example.com
 ```
@@ -31,7 +31,7 @@ Do not place credentials in URLs, public issues, documentation, or repository se
 
 **Local:** choose a folder outside the vault. A separate disk or host protects against more failure modes than the same disk. Snapshots have unique names and a checksum manifest.
 
-**Cloud:** install rclone, configure a remote for your chosen provider, and select its `remote:path` in Keystone settings. Keystone creates a local snapshot, then uploads it using the configured remote. If upload fails, the local snapshot remains and the result reports cloud failure. Configure an rclone crypt remote when client-side encryption is desired. Protect its password and recovery information separately. [rclone crypt documentation](https://rclone.org/crypt/)
+**Cloud:** install rclone, configure a remote for your chosen provider, and select its `remote:path` in Mnemos settings. Mnemos creates a local snapshot, then uploads it using the configured remote. If upload fails, the local snapshot remains and the result reports cloud failure. Configure an rclone crypt remote when client-side encryption is desired. Protect its password and recovery information separately. [rclone crypt documentation](https://rclone.org/crypt/)
 
 The default local snapshots are unencrypted. Cloud encryption depends on the selected remote; a cloud destination alone is not an encryption guarantee. Backups are run on demand in this version. There is no automatic schedule or retention policy unless you configure one externally.
 
@@ -45,15 +45,15 @@ Restore is intentionally non-destructive. It checks the archive manifest and fil
 2. Initialize a fresh data directory:
 
    ```sh
-   python3 -m keystone init --data ./recovered-data --author "Your name"
+   python3 -m mnemos init --data ./recovered-data --author "Your name"
    ```
 
 3. In the file manager, rename the new `recovered-data/vault` folder to `starter-vault`, preserving its generated examples.
 4. Restore the snapshot into the now-absent vault folder:
 
    ```sh
-   python3 scripts/restore.py /path/to/keystone-snapshot.zip --to ./recovered-data/vault
-   python3 -m keystone serve --data ./recovered-data
+   python3 scripts/restore.py /path/to/mnemos-snapshot.zip --to ./recovered-data/vault
+   python3 -m mnemos serve --data ./recovered-data
    ```
 
 5. Search recent documents, read their content, and inspect expected workflow files. Record the archive, recovery date, checks, and limitations.

@@ -3,9 +3,9 @@ id: "example-verify-capture"
 title: "Verify a captured knowledge item"
 type: "microtask"
 status: "verified"
-project: "Keystone example"
-tags: ["keystone", "verification", "microtask"]
-author: "Keystone examples"
+project: "Mnemos example"
+tags: ["mnemos", "verification", "microtask"]
+author: "Mnemos examples"
 updated: "2026-10-17"
 verified: "2026-10-17"
 summary: "Check a saved document against evidence without inventing successful execution."

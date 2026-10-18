@@ -3,9 +3,9 @@ id: "example-evidence-review"
 title: "Review evidence before documenting work"
 type: "microtask"
 status: "verified"
-project: "Keystone example"
-tags: ["keystone", "evidence", "microtask"]
-author: "Keystone examples"
+project: "Mnemos example"
+tags: ["mnemos", "evidence", "microtask"]
+author: "Mnemos examples"
 updated: "2026-10-17"
 verified: "2026-10-17"
 summary: "Identify supported facts, unknowns, and sensitive material before drafting."

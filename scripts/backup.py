@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from keystone.backup import create_backup
+from mnemos.backup import create_backup
 parser = argparse.ArgumentParser(description='Create a verified local or cloud vault snapshot.')
 parser.add_argument('--data', default='./data')
 args = parser.parse_args()

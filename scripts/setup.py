@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an isolated Keystone vault and install Obsidian when needed."""
+"""Create an isolated Mnemos vault and install Obsidian when needed."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from keystone.core import initialize, load_config, update_settings
+from mnemos.core import initialize, load_config, update_settings
 
 
 def detect_obsidian(data):
@@ -44,7 +44,7 @@ def detect_obsidian(data):
 
 
 def download_official_asset(system, target):
-    request = Request('https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest', headers={'User-Agent': 'Keystone-Setup/0.1'})
+    request = Request('https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest', headers={'User-Agent': 'Mnemos-Setup/0.1'})
     with urlopen(request, timeout=30) as response:
         release = json.load(response)
     architecture = platform.machine().lower()
@@ -66,7 +66,7 @@ def download_official_asset(system, target):
     if not url.startswith('https://github.com/obsidianmd/obsidian-releases/releases/download/'):
         raise RuntimeError('Unexpected installer download host.')
     target.parent.mkdir(parents=True, exist_ok=True)
-    with urlopen(Request(url, headers={'User-Agent': 'Keystone-Setup/0.1'}), timeout=60) as response, target.open('wb') as stream:
+    with urlopen(Request(url, headers={'User-Agent': 'Mnemos-Setup/0.1'}), timeout=60) as response, target.open('wb') as stream:
         shutil.copyfileobj(response, stream)
     digest = asset.get('digest')
     if digest and digest.startswith('sha256:'):
@@ -95,7 +95,7 @@ def install_obsidian(data):
         target = download_official_asset(system, data / 'tools' / 'Obsidian.AppImage')
         target.chmod(0o755)
     elif system == 'Darwin':
-        with tempfile.TemporaryDirectory(prefix='keystone-obsidian-') as temporary:
+        with tempfile.TemporaryDirectory(prefix='mnemos-obsidian-') as temporary:
             folder = Path(temporary)
             installer = download_official_asset(system, folder / 'Obsidian.dmg')
             mount = folder / 'mounted'
@@ -111,7 +111,7 @@ def install_obsidian(data):
             finally:
                 subprocess.run(['hdiutil', 'detach', str(mount)], check=True)
     elif system == 'Windows':
-        with tempfile.TemporaryDirectory(prefix='keystone-obsidian-') as temporary:
+        with tempfile.TemporaryDirectory(prefix='mnemos-obsidian-') as temporary:
             installer = download_official_asset(system, Path(temporary) / 'Obsidian.exe')
             subprocess.run([str(installer), '/S'], check=True)
     else:
@@ -138,9 +138,11 @@ def main():
     if data.is_symlink():
         parser.exit(1, 'Choose a dedicated data directory, not a symlink.\n')
     data = data.resolve()
-    existing = (data / 'config.json').exists()
+    from mnemos.onboarding import validate_target
+    data, existing_config = validate_target(data)
+    existing = existing_config is not None
     if existing:
-        config = load_config(data)
+        config = existing_config
         author = config['owner']
     else:
         author = args.author or ('Local engineer' if args.yes else input('Your author name [Local engineer]: ').strip() or 'Local engineer')
@@ -151,7 +153,7 @@ def main():
     destination = Path(args.destination).expanduser().resolve() if args.destination else Path(config['backup']['destination'])
     remote = args.remote if args.remote is not None else config['backup'].get('remote', '')
     if selected == 'rclone' and not remote and not args.yes:
-        remote = input('Configured rclone remote (e.g. encrypted:keystone): ').strip()
+        remote = input('Configured rclone remote (e.g. encrypted:mnemos): ').strip()
     if selected == 'rclone' and (not remote or ':' not in remote):
         parser.exit(1, 'Cloud backup needs --remote configured-name:path. Configure credentials with rclone config.\n')
     vault = data / 'vault'
@@ -159,12 +161,12 @@ def main():
         parser.exit(1, 'Backup destination must be outside the vault.\n')
     update_settings(data, {'backup': {'provider': selected, 'destination': str(destination), 'remote': remote}})
     obsidian = 'Skipped for a headless environment' if args.skip_obsidian else install_obsidian(data)
-    print(f'\nKeystone is ready for {author}.')
+    print(f'\nMnemos is ready for {author}.')
     print(f'Obsidian: {obsidian}')
     print(f'Dedicated vault: {vault}')
     print('In Obsidian, choose Open folder as vault and select that folder once.')
     print(f'Backup storage: {selected}. ' + ('Configure rclone credentials before the first cloud backup.' if selected == 'rclone' else 'Snapshots are created on demand.'))
-    print(f'Start the portal: {sys.executable} -m keystone serve --data "{data}"')
+    print(f'Start the portal: {sys.executable} -m mnemos serve --data "{data}"')
     print('Open http://127.0.0.1:4318')
     print('Reusable assistant skills are in skills/. Copy the desired skills into your agent workspace.')
     return 0

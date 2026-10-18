@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mnemos Skill Builder"
+  short_description: "Build reusable skills from verified documentation"
+  default_prompt: "Use $mnemos-build-skill to create a scoped skill from verified Mnemos sources."

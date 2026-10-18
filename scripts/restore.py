@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from keystone.backup import restore_backup
+from mnemos.backup import restore_backup
 parser = argparse.ArgumentParser(description='Verify and restore a snapshot into a new or empty directory.')
 parser.add_argument('snapshot')
 parser.add_argument('--to', required=True)

@@ -3,15 +3,15 @@ id: "example-context-handoff"
 title: "Carry context between assistants"
 type: "context"
 status: "verified"
-project: "Keystone example"
-tags: ["keystone", "context", "handoff"]
-author: "Keystone examples"
+project: "Mnemos example"
+tags: ["mnemos", "context", "handoff"]
+author: "Mnemos examples"
 updated: "2026-10-17"
 verified: "2026-10-17"
 summary: "A compact handoff preserves decisions, current state, unknowns, and the next action."
 example: true
 sources: []
-related_ids: ["example-keystone-overview", "example-first-capture"]
+related_ids: ["example-mnemos-overview", "example-first-capture"]
 ---
 
 # Carry context between assistants
@@ -24,7 +24,7 @@ Resume engineering work in a different assistant without reconstructing decision
 
 ## Current state
 
-Keystone supports context notes in the same private Markdown vault as runbooks and knowledge items. A context note can be drafted in any assistant and imported with the capture command. A locally connected MCP client can search, read, recall, and capture using the toolkit's tools.
+Mnemos supports context notes in the same private Markdown vault as runbooks and knowledge items. A context note can be drafted in any assistant and imported with the capture command. A locally connected MCP client can search, read, recall, and capture using the toolkit's tools.
 
 ## Constraints
 

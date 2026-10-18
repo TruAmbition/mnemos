@@ -5,14 +5,14 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from keystone import core
+from mnemos import core
 
 
 class CoreTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.data = Path(self.temp.name) / "keystone"
+        self.data = Path(self.temp.name) / "mnemos"
         core.initialize(self.data, "Owner")
         for child in core.vault_path(self.data).iterdir():
             if child.is_dir():
@@ -35,7 +35,7 @@ class CoreTests(unittest.TestCase):
         (other / "vault/.obsidian").mkdir(parents=True)
         note = other / "vault/personal.md"
         note.write_text("Private personal note")
-        with self.assertRaises(core.KeystoneError):
+        with self.assertRaises(core.MnemosError):
             core.initialize(other)
         self.assertEqual(note.read_text(), "Private personal note")
         self.assertFalse((other / "config.json").exists())
@@ -62,17 +62,17 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(updated["author"], "Contributor")
         self.assertEqual(updated["verified"], "")
         self.assertEqual(core.list_documents(self.data, "reader"), [])
-        with self.assertRaises(core.KeystoneError) as error:
+        with self.assertRaises(core.MnemosError) as error:
             core.save_document(self.data, dict(updated, status="verified"), "author", "Contributor")
         self.assertEqual(error.exception.status, 403)
-        with self.assertRaises(core.KeystoneError):
+        with self.assertRaises(core.MnemosError):
             core.save_document(self.data, {"title": "No"}, "reader", "Reader")
 
     def test_conflict_protection_includes_external_obsidian_edits(self):
         original = self.save()
         path = core.vault_path(self.data) / original["path"]
         path.write_text(path.read_text() + "\nEdited in Obsidian.\n")
-        with self.assertRaises(core.KeystoneError) as error:
+        with self.assertRaises(core.MnemosError) as error:
             self.save(revision=original["revision"])
         self.assertEqual(error.exception.status, 409)
         self.assertIn("Edited in Obsidian", path.read_text())
@@ -82,7 +82,7 @@ class CoreTests(unittest.TestCase):
         def attempt(name):
             try:
                 return self.save(revision=original["revision"], body=name)["body"]
-            except core.KeystoneError as error:
+            except core.MnemosError as error:
                 return error.status
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(attempt, ["Author one", "Author two"]))
@@ -90,7 +90,7 @@ class CoreTests(unittest.TestCase):
 
     def test_path_and_symlink_escape_are_rejected(self):
         for document_id in ["../escape", "/tmp/escape", "a/b", ".."]:
-            with self.assertRaises(core.KeystoneError):
+            with self.assertRaises(core.MnemosError):
                 self.save(id=document_id)
         outside = Path(self.temp.name) / "outside"
         outside.mkdir()
@@ -99,7 +99,7 @@ class CoreTests(unittest.TestCase):
             link.symlink_to(outside, target_is_directory=True)
         except (OSError, NotImplementedError):
             self.skipTest("Symbolic links unavailable")
-        with self.assertRaises(core.KeystoneError):
+        with self.assertRaises(core.MnemosError):
             self.save()
         self.assertEqual(list(outside.iterdir()), [])
 
@@ -125,9 +125,9 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(core.public_settings(self.data, "reader"), {})
 
     def test_backup_configuration_cannot_target_vault(self):
-        with self.assertRaises(core.KeystoneError):
+        with self.assertRaises(core.MnemosError):
             core.update_settings(self.data, {"backup": {"provider": "local", "destination": str(core.vault_path(self.data) / "backups")}})
-        with self.assertRaises(core.KeystoneError):
+        with self.assertRaises(core.MnemosError):
             core.update_settings(self.data, {"backup": {"provider": "rclone", "remote": "--malicious"}})
 
     def test_workflow_topological_order_and_reader_visibility(self):
@@ -154,7 +154,7 @@ class CoreTests(unittest.TestCase):
         for steps in bad_steps:
             with self.subTest(steps=steps):
                 self.workflow(steps)
-                with self.assertRaises(core.KeystoneError):
+                with self.assertRaises(core.MnemosError):
                     core.workflow_plan(self.data, "check")
 
 
