@@ -15,6 +15,23 @@ spec.loader.exec_module(launcher)
 
 
 class LauncherTests(unittest.TestCase):
+    def test_explicit_installation_reuses_its_service(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pointer = Path(directory).resolve() / 'installation.json'
+            status = {'kind': 'mnemos-local-runtime-v1', 'installation': str(pointer),
+                      'data_path': str(pointer.parent), 'initialized': False}
+            with patch.object(sys, 'argv', ['launch.py', '--installation', str(pointer), '--background', '--no-browser']), \
+                    patch.object(launcher, 'running', return_value=status), \
+                    patch.object(launcher.subprocess, 'Popen') as popen:
+                launcher.main()
+                popen.assert_not_called()
+
+    def test_explicit_installation_requires_absolute_pointer_path(self):
+        for pointer in ['relative/installation.json', '/absolute/config.json']:
+            with self.subTest(pointer=pointer), patch.object(sys, 'argv', ['launch.py', '--installation', pointer]):
+                with self.assertRaisesRegex(ValueError, 'absolute installation.json'):
+                    launcher.main()
+
     def test_matching_running_service_is_reused_without_spawning(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

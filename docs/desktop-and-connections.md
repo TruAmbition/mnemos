@@ -1,10 +1,10 @@
 # Desktop launch and connection management
 
-Mnemos 0.3 adds a standalone desktop distribution and a local connection dashboard. The Mac app includes Python and opens the existing browser interface. It requires no inference API key or tunnel for local use.
+Mnemos 0.8 adds a native SwiftUI Mac manager alongside the existing browser interface. The Mac app includes Python and requires no inference API key or tunnel for local use. See [native macOS management](native-macos.md) for its screens, existing-installation detection, build requirements, and validation. Version 0.7.1 was the earlier browser launcher; Windows/Linux keep that launcher design.
 
 ## Install the desktop app
 
-Download the Apple Silicon DMG or app ZIP from [GitHub Releases](https://github.com/TruAmbition/mnemos/releases/latest). Version 0.7.1 includes the latest Getting started and skill matching features. The release also includes source and a standalone reconstruction prompt.
+Download the Apple Silicon DMG or app ZIP from [GitHub Releases](https://github.com/TruAmbition/mnemos/releases/latest). Version 0.8.0 includes native Mac management, Getting started, and skill matching. The release also includes source and a standalone reconstruction prompt.
 
 On macOS, open the disk image, drag **Mnemos.app** into **Applications**, eject the disk image, then open Mnemos. Keep the app in its installed location: assistant connections may refer to its executable. The first start can take around 30–40 seconds while macOS loads the bundle. Subsequent opens reuse the running local service.
 
@@ -14,7 +14,7 @@ The repository includes a manually triggered **Desktop bundles** GitHub Actions 
 
 ## Start, reopen, and stop
 
-- Open the app to start the local service and browser. First use opens Workspace setup. After setup, the first visit in a browser opens Getting started; later root launches open the Library. Explicit page links keep their destination.
+- On macOS 0.8+, open the app for the native manager, then choose **Open Library** for the browser. Earlier Mac and Windows/Linux packages open the local service and browser. First use opens Workspace setup. After setup, the first visit in a browser opens Getting started; later root launches open the Library. Explicit page links keep their destination.
 - Opening the same launcher again reuses its existing service. Closing a browser tab does not stop Mnemos.
 - Use **Connections → Stop local service**, or **Stop local service** in the setup header. Reopen the app to start again. Notes remain on disk.
 - A port occupied by a different Mnemos installation is reported rather than silently switching the user to that library. A different app on the port is left alone. Stop the intended Mnemos service from its own page, or use a different port.
@@ -59,7 +59,7 @@ For headless inspection, use `python3 -m mnemos connections --project /absolute/
 
 ## Build a distribution
 
-Use an isolated build environment on each target OS. The application itself has no third-party Python dependencies; PyInstaller is only a build dependency.
+Use an isolated build environment on each target OS. macOS builds also require Swift 5.9+ through Xcode Command Line Tools; end users do not need Swift or Xcode. The application itself has no third-party Python dependencies; PyInstaller is only a build dependency.
 
 ```sh
 python3 -m venv .venv-build

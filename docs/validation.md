@@ -1,6 +1,14 @@
-# Version 0.7.1 validation
+# Validation history
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## Native SwiftUI manager (0.8.0)
+
+On October 18, 2026, the source passed **175 Python tests, 46 JavaScript tests, and 6 Swift tests**. The Swift suite exercised the real source server and the packaged runtime separately with disposable workspaces: create/update/select, retained backups, stale-workspace rejection, and service shutdown. The bundled executable forwarded both CLI and MCP initialization/tool discovery successfully. No private vault was modified in these lifecycle checks.
+
+The Apple Silicon app was built using Xcode 26.5 / Swift 6.3.2 and Python 3.14.6. The full app signature and DMG verification passed. Native UI inspection confirmed detection/adoption of the existing local installation and rendered workspace settings, backup history, and assistant connection status. The manager remembers that installation without copying files or retargeting assistants. Final UI screenshots are local deliverables, not repository fixtures containing user paths.
+
+The declared macOS minimum is 13; only macOS 26.5 Apple Silicon was exercised locally. The app remains ad-hoc signed and unnotarized. Intel Macs, older macOS, packaged Windows/Linux artifacts, cloud uploads, and new assistant account enrollment were not validated for this change. Windows/Linux still use their existing browser launchers. The added macOS CI job runs the native live-service harness; the existing nine Python/browser platform jobs remain.
 
 ## First-visit guide and skill matching (0.7.1)
 

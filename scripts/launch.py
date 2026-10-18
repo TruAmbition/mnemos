@@ -54,7 +54,9 @@ def failure_page(message, folder):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', help='Pin this workspace instead of following the saved default.')
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument('--data', help='Pin this workspace instead of following the saved default.')
+    selection.add_argument('--installation', type=Path, help='Follow this installation.json default selection (native manager).')
     parser.add_argument('--port', type=int, default=4318)
     parser.add_argument('--no-browser', action='store_true', help='Run in the foreground without a browser (automation).')
     parser.add_argument('--background', action='store_true', help='Start a detached service, also when --no-browser is supplied.')
@@ -63,6 +65,10 @@ def main():
     if not 0 <= args.port <= 65535:
         raise ValueError('Choose a port between 0 and 65535.')
     base = default_root() if getattr(sys, 'frozen', False) else ROOT / 'data'
+    if args.installation:
+        if not args.installation.is_absolute() or args.installation.name != 'installation.json':
+            raise ValueError('Choose an absolute installation.json path.')
+        base = args.installation.parent
     pointer = None if args.data else base / 'installation.json'
     data = Path(args.data).expanduser().absolute() if args.data else load_selection(pointer, base)
     if data.is_symlink():
@@ -96,6 +102,8 @@ def main():
             command = tool_command('launch', '--foreground', '--no-browser', '--port', args.port)
             if args.data:
                 command += ['--data', str(data)]
+            elif args.installation:
+                command += ['--installation', str(pointer)]
             options = {'start_new_session': True} if os.name != 'nt' else {'creationflags': subprocess.CREATE_NO_WINDOW}
             with os.fdopen(fd, 'w') as output:
                 child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=output, stderr=output,

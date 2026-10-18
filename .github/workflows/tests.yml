@@ -8,6 +8,12 @@ permissions:
   contents: read
 
 jobs:
+  swift:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native manager contracts and build SwiftUI
+        run: python3 scripts/test_desktop.py
   test:
     strategy:
       fail-fast: false

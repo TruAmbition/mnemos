@@ -49,11 +49,22 @@ def main():
         if app.exists():
             raise SystemExit('Output app already exists; use a fresh output folder.')
         shutil.copytree(work / 'dist/Mnemos.app', app, symlinks=True)
+        # Keep the bundled Python runtime for CLI/MCP and service processes. The
+        # visible app is native SwiftUI; its executable forwards legacy flags.
+        executable = app / 'Contents/MacOS/Mnemos'
+        executable.rename(executable.with_name('MnemosRuntime'))
+        swift_build = ['swift', 'build', '--package-path', str(ROOT / 'desktop'),
+                       '--scratch-path', str(work / 'swift'), '-c', 'release']
+        subprocess.run(swift_build, check=True)
+        binaries = subprocess.check_output(swift_build + ['--show-bin-path'], text=True).strip()
+        shutil.copy2(Path(binaries) / 'MnemosManager', executable)
         info_path = app / 'Contents/Info.plist'
         with info_path.open('rb') as file:
             info = plistlib.load(file)
         info.update(CFBundleIdentifier='local.mnemos.desktop', CFBundleShortVersionString=__version__,
-                    CFBundleVersion=__version__, LSUIElement=True)
+                    CFBundleVersion=__version__, LSUIElement=False,
+                    LSMinimumSystemVersion='13.0',
+                    NSAppTransportSecurity={'NSAllowsLocalNetworking': True})
         with info_path.open('wb') as file:
             plistlib.dump(info, file)
         subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(app)], check=True)
@@ -65,7 +76,8 @@ def main():
             shutil.copytree(app, image / 'Mnemos.app', symlinks=True)
             (image / 'Applications').symlink_to('/Applications')
             (image / 'READ ME.txt').write_text('Drag Mnemos to Applications, then open it. No Python installation is needed.\n'
-                'Use Connections to stop the local service. Reopen Mnemos to start it again.\n'
+                'Use the native manager for setup, backups, projects, and service controls. Open Library for documentation.\n'
+                'Closing the window keeps the local service running. Stop it from Overview.\n'
                 'This developer build is ad-hoc signed, not Apple notarized. Corporate approval may be required.\n'
                 'Your vault lives outside the app. Existing source checkouts are not migrated automatically.\n')
             subprocess.run(['hdiutil', 'create', '-volname', 'Mnemos', '-srcfolder', str(image),

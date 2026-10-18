@@ -37,3 +37,5 @@ dist/
 /.venv-build/
 /desktop-output/
 /desktop-work/
+/desktop/.build/
+/desktop/.swiftpm/
