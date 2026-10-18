@@ -1,6 +1,6 @@
 # Knowledge brain
 
-Open **Knowledge brain** in the browser sidebar or the native Mac app. Mnemos displays your engineering knowledge as colored orbs within a brain silhouette. Choose **Network** for a conventional network layout.
+Open **Knowledge brain** in the browser sidebar or the native Mac app. Mnemos displays your engineering knowledge as an open network of colored orbs and documented relationships. “Brain” names the connected knowledge; the view has no anatomical outline, lobes, or hemisphere constraints.
 
 ## Color mode
 
@@ -39,7 +39,7 @@ Projects and repositories have larger base sizes. Every orb also grows with its 
 
 The graph resolves visible notes' Obsidian wiki links, relative Markdown note links, related-note IDs, and Mnemos source references. It also includes declared project/repository memberships and system relationships, workflow steps, and saved skill source documents. Ambiguous or missing references are skipped. Literal examples inside code or comments are not treated as links.
 
-The brain outline is decorative. Connections are recorded relationships, not similarity inferred by AI. This is a separate renderer of the same vault knowledge, not an embedded copy of Obsidian's Graph view. Obsidian node positions, filters, colors, and force settings are not synchronized. Obsidian Canvas files remain separate, editable maps. [Obsidian's graph documentation](https://obsidian.md/help/plugins/graph) explains its own group colors and connectivity sizing.
+Connections are recorded relationships, not similarity inferred by AI. This is a separate renderer of the same vault knowledge, not an embedded copy of Obsidian's Graph view. Obsidian node positions, filters, colors, and force settings are not synchronized. Obsidian Canvas files remain separate, editable maps. [Obsidian's graph documentation](https://obsidian.md/help/plugins/graph) explains its own group colors and connectivity sizing.
 
 ## Privacy and scope
 

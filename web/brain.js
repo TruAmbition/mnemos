@@ -4,7 +4,6 @@
   const kinds={project:['Project','#b39aff',22],repository:['Repository','#54d9f2',17],'skill-package':['Built skill','#f8c568',15],skill:['Skill note','#f8c568',13],workflow:['Workflow','#ed8bdb',15],runbook:['Runbook','#6fe0ad',10],knowledge:['Knowledge item','#8ebaff',9],troubleshooting:['Troubleshooting','#ff8994',11],decision:['Decision','#d0a4fb',10],'work-log':['Work log','#c6d1df',8],microtask:['Microtask','#91e4d1',8],context:['Context','#8dc6e8',10],flow:['Flow','#f2ab84',12]};
   const style=kind=>kinds[kind]||['Document','#b1c7e2',9];
   const radius=node=>Math.min(30,style(node.kind)[2]+Math.sqrt(node.connections||0)*1.7);
-  const hash=text=>{let n=2166136261;for(const c of String(text)){n^=c.charCodeAt(0);n=Math.imul(n,16777619);}return n>>>0;};
   function filter(graph,{query='',kind='all',project='all',focus=null,limit=500}={}){
     const adjacent=new Set([focus]);
     if(focus)for(const e of graph.edges){if(e.source===focus)adjacent.add(e.target);if(e.target===focus)adjacent.add(e.source);}
@@ -30,26 +29,23 @@
     const legend=[...new Map(graph.nodes.map(n=>{const e=entry(n);return [e.key,e];})).values()].sort((a,b)=>a.label.localeCompare(b.label));
     return {entry,legend};
   }
-  function constrain(point,brain){
-    if(!brain){point.x=Math.max(50,Math.min(950,point.x));point.y=Math.max(45,Math.min(655,point.y));return;}
-    const cx=point.side?645:355,dx=(point.x-cx)/215,dy=(point.y-345)/260,n=Math.hypot(dx,dy);
-    if(n>1){point.x=cx+dx/n*215;point.y=345+dy/n*260;}
-    point.x=point.side?Math.max(515,point.x):Math.min(485,point.x);
+  function constrain(point){
+    point.x=Math.max(60,Math.min(940,point.x));point.y=Math.max(55,Math.min(625,point.y));
   }
-  function layout(graph,mode='brain',size=1){
-    const brain=mode==='brain', counts=[0,0], index=new Map();
-    const points=graph.nodes.slice().sort((a,b)=>a.id.localeCompare(b.id)).map(n=>{
-      const side=hash(n.id)%2,i=counts[side]++,angle=i*2.399963+hash(n.id)%19,scale=Math.sqrt((hash(n.id)%900+80)/1000);
-      const point={...n,side,x:(side?645:355)+Math.cos(angle)*195*scale,y:345+Math.sin(angle)*245*scale,r:radius(n)*size};
+  function layout(graph,size=1){
+    const index=new Map(),ordered=graph.nodes.slice().sort((a,b)=>a.id.localeCompare(b.id));
+    const points=ordered.map((n,i)=>{
+      const angle=i*2.399963,spread=ordered.length===1?0:Math.sqrt((i+.5)/ordered.length);
+      const point={...n,x:500+Math.cos(angle)*390*spread,y:340+Math.sin(angle)*265*spread,r:radius(n)*size};
       point.homeX=point.x;point.homeY=point.y;index.set(n.id,point);return point;
     });
     for(let pass=0;pass<45;pass++){
-      for(const e of graph.edges){const a=index.get(e.source),b=index.get(e.target);if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy)||1,pull=Math.max(0,dist-160)*.003/Math.sqrt(Math.max(1,a.connections,b.connections));a.x+=dx/dist*pull;a.y+=dy/dist*pull;b.x-=dx/dist*pull;b.y-=dy/dist*pull;}
+      for(const e of graph.edges){const a=index.get(e.source),b=index.get(e.target);if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy)||1,pull=Math.max(0,dist-140)*.012/Math.sqrt(Math.max(1,a.connections||0,b.connections||0));a.x+=dx/dist*pull;a.y+=dy/dist*pull;b.x-=dx/dist*pull;b.y-=dy/dist*pull;}
       for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++){
-        const a=points[i],b=points[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),desired=a.r+b.r+17;
+        const a=points[i],b=points[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),desired=Math.max(65,a.r+b.r+25);
         if(d<desired){if(d<.01){dx=1;dy=.4;d=Math.hypot(dx,dy);}const push=(desired-d)*.34;a.x-=dx/d*push;a.y-=dy/d*push;b.x+=dx/d*push;b.y+=dy/d*push;}
       }
-      for(const p of points){p.x+=(p.homeX-p.x)*.12;p.y+=(p.homeY-p.y)*.12;constrain(p,brain);}
+      for(const p of points){p.x+=(p.homeX-p.x)*.08;p.y+=(p.homeY-p.y)*.08;constrain(p);}
     }
     return points;
   }
@@ -68,14 +64,7 @@
       return `url(#${gradients.get(color)})`;
     }
     const viewport=el('g');svg.append(viewport);
-    const outlines=el('g',{'aria-hidden':'true',class:'brain-contours'});viewport.append(outlines);
-    if(options.mode!=='network'){
-      const outer='M486 118 C465 68 420 66 389 87 C340 57 297 86 284 113 C231 96 187 136 190 177 C141 193 121 234 142 275 C105 313 120 366 149 388 C122 436 156 482 191 491 C188 546 237 577 276 562 C301 614 352 615 381 590 C427 614 472 582 486 542 Z';
-      outlines.append(el('path',{d:outer}),el('path',{d:outer,transform:'translate(1000 0) scale(-1 1)'}));
-      const folds=['M389 87 C365 140 420 153 454 174 C482 202 437 240 407 219','M284 113 C325 148 268 187 235 199 C212 232 238 264 277 255','M142 275 C195 286 188 342 230 346 C276 351 291 310 324 319','M191 491 C243 469 220 421 261 405 C297 397 321 430 352 419','M276 562 C307 524 357 542 382 507 C403 473 376 441 394 409','M486 284 C431 265 410 298 418 334 C430 372 465 374 486 363','M337 189 C371 217 341 249 342 274','M149 388 C178 377 199 401 193 430','M486 542 C452 523 431 553 433 579'];
-      for(const d of folds)outlines.append(el('path',{d,class:'brain-fold'}),el('path',{d,class:'brain-fold',transform:'translate(1000 0) scale(-1 1)'}));
-    }
-    const points=layout(graph,options.mode,options.size||1),indexed=new Map(points.map(p=>[p.id,p]));
+    const points=layout(graph,options.size||1),indexed=new Map(points.map(p=>[p.id,p]));
     const lines=el('g',{'aria-hidden':'true',class:'brain-edges'});viewport.append(lines);
     for(const e of graph.edges){const a=indexed.get(e.source),b=indexed.get(e.target);if(!a||!b)continue;const path=el('path',{d:`M${a.x} ${a.y} Q${(a.x+b.x)/2} ${(a.y+b.y)/2-18} ${b.x} ${b.y}`,class:'brain-edge',stroke:style(a.kind)[1]});path.dataset.source=e.source;path.dataset.target=e.target;lines.append(path);}
     const orbs=el('g');viewport.append(orbs);

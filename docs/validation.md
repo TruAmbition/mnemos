@@ -2,6 +2,12 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Open relationship network (0.12.2)
+
+All **62 JavaScript tests** passed after removing anatomical paths, hemisphere constraints, and the layout picker. The bounded deterministic layout checks now cover an open network and centered single-node view. An isolated browser check confirmed the absence of anatomical paths, clear spacing, retained node selection, default type colors, and functioning project colors. Screenshots use synthetic documentation.
+
+The Apple Silicon package was rebuilt. All **6 packaged Swift tests**, CLI/MCP forwarding, signature and DMG verification passed; bundled graph assets matched source. The existing local service was restarted on the same workspace. Note storage, graph relationships, and privacy behavior are unchanged.
+
 ## Project color toggle (0.12.1)
 
 All **62 JavaScript tests** passed, including default type colors, shared and unassigned states, consistent project membership colors across different kinds, and stable colors when filtering. An isolated browser check verified the initial off state, changing orb colors and the legend, unchanged node positions and zoom, and restoration of the original type colors. The screenshot uses synthetic documentation. No note data or Obsidian settings were changed.
