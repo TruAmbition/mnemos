@@ -2,6 +2,8 @@
 
 Mnemos provides a local MCP server and a CLI. Both use the same dedicated vault. Local clients need no tunnel. A cloud chat can instead use the [file handoff workflow](cloud-handoff.md), which also needs no tunnel and grants no direct computer access. A local desktop connection does not automatically make the vault available to a separately hosted chat.
 
+Start with a local client where practical. Its model may still process selected context in the cloud under that client's policies. For frequent direct ChatGPT access, compare [tunnel benefits, operating costs, and vault-wide access](chatgpt-tunnel.md#is-a-tunnel-worth-it) with the file handoff route before configuring a connection.
+
 ## Project setup for Codex and Claude Code
 
 From the source checkout, run:

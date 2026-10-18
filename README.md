@@ -72,6 +72,8 @@ Mnemos does not automatically access every previous conversation or monitor all 
 
 ## Connect your assistant
 
+Start with local tools. Use [file handoff](docs/cloud-handoff.md) for explicit source selection in cloud tasks; consider a tunnel for frequent authorized ChatGPT lookup and draft updates. Local clients need no tunnel, but may still use cloud models. Read [the tunnel benefits and tradeoffs](docs/chatgpt-tunnel.md#is-a-tunnel-worth-it), including its access to all dedicated-vault notes and drafts, before choosing.
+
 For direct Claude Desktop chats, use the [Claude Desktop installer](docs/claude-desktop.md). It connects this vault to the desktop app and preserves existing settings. Browser-based Claude uses a separate remote connection.
 
 For ChatGPT or Claude cloud chats, start with [portable context handoffs](docs/cloud-handoff.md). Download the context you choose, supply the `mnemos-handoff` skill, and import its returned draft locally. A skill alone does not grant direct access to your Mac.

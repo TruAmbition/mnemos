@@ -1,8 +1,24 @@
 # Optional direct ChatGPT connection
 
-This is an advanced, opt-in connection. Local desktop clients and [cloud file handoffs](cloud-handoff.md) do not need a tunnel. Existing connections remain usable; the product rename does not replace runtime keys, change tunnel ownership, or rename the stable `keystone` profile/receipt files.
+This is an optional connection for direct ChatGPT access to Mnemos. The product rename leaves existing runtime keys, tunnel ownership, and stable `keystone` profile/receipt files unchanged.
 
-Mnemos can use OpenAI's Secure MCP Tunnel to make its existing local assistant tools available to a private ChatGPT plugin. The connection is outbound HTTPS; your vault and website do not need a public address. The local computer and tunnel process must remain running. This is a personal author connection: the MCP process can read every document in this vault, including drafts, and save drafts. It does not apply the website's reader-role filtering.
+## Is a tunnel worth it?
+
+**Start with local tools.** Choose a tunnel when you frequently want authorized ChatGPT reads and writes against current notes. Choose file handoff when you want explicit source selection for each cloud task and policy allows those uploads.
+
+| Route | What you gain | What you manage |
+| --- | --- | --- |
+| Local Codex or Claude client | Direct lookup and draft capture without a tunnel. | A configured, authorized local client. Its model may still process selected context in the cloud under that client's policies. |
+| Cloud file handoff | You choose the sources to share; no persistent connection. | Export, upload, review, and import a new draft. The exported snapshot can become stale. |
+| Direct ChatGPT tunnel | Current-note lookup and direct draft creation or updates with revision checks; no manual file transfers. | An online, awake host, running tunnel client, internet access, runtime credential upkeep, and approved vault-wide access. |
+
+OpenAI's client forwards requests and responses over outbound HTTPS; the private MCP server needs no inbound public port. Account/workspace access and enterprise outbound-connection policies still apply. [Official tunnel architecture and access requirements](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+
+**The current Mnemos connector can read every document in its dedicated vault, including drafts.** It does not restrict access to sources selected on the handoff page. Requested note content returned through its tools reaches the cloud chat. Captures and updates remain drafts for owner review.
+
+A tunnel adds no automatic backup, vault synchronization, workflow execution, or access to other chats. This ChatGPT setup does not connect every Claude mode. It also promises no token savings: retrieved text still consumes context.
+
+Changing the setup preference does not enable or disable an existing tunnel. Stopping its client prevents future calls through that local connection; it does not remove content already shared in a chat.
 
 OpenAI requires a Platform tunnel associated with the intended ChatGPT workspace, a runtime key with Tunnels Read + Use, and permission to add a custom MCP server. Creating a tunnel needs Tunnels Read + Manage. These account permissions are separate. See the [official Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
 

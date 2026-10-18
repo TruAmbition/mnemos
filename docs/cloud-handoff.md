@@ -2,7 +2,7 @@
 
 Mnemos can exchange knowledge with a cloud chat through files. Your local library stays on your computer; you choose which source material to upload and later review the returned draft before saving it. No tunnel, public server, account connector, or direct Mac access is required.
 
-Company policies and the selected AI service's data rules still govern uploads. A file handoff avoids a persistent connection; it does not make uploaded information local-only.
+Company policies and the selected AI service's data rules still govern uploads. A file handoff avoids a persistent connection; it does not make uploaded information local-only. This route is useful when you want to choose sources for each task. Its tradeoff is manual transfer and a snapshot that can become stale; a tunnel supports live lookup and direct draft updates but grants the current connector access to the entire dedicated vault, including drafts. See [the comparison](chatgpt-tunnel.md#is-a-tunnel-worth-it).
 
 ## Send the relevant context
 
