@@ -1,5 +1,7 @@
 # Connect a private ChatGPT GPT through Actions
 
+For a vault that stays on your computer, use the [Secure MCP Tunnel connection](chatgpt-tunnel.md) when your account has the required access. The Actions option below is for a separately hosted HTTPS installation.
+
 The supplied [OpenAPI schema](../integrations/chatgpt-actions.openapi.json) describes three existing Keystone HTTP operations: recall context, read a document, and capture a draft. It provides a setup path for a custom GPT after you host Keystone at an HTTPS address reachable by ChatGPT. **This integration is prepared, not deployed or tested end to end with your ChatGPT account.**
 
 GPT Actions use an OpenAPI schema and configured authentication to call an API. The official setup guide explains schema import and action testing. [GPT Actions setup](https://developers.openai.com/api/docs/actions/getting-started)

@@ -54,7 +54,7 @@ For a handoff between ChatGPT, Claude, and Codex:
 
 > Export this task's context to Keystone: goal, current state, constraints, decisions, failed approaches, unknowns, and next actions. Keep it concise and source-backed.
 
-An assistant with a configured local MCP connection can save directly. An assistant with access to the checkout can use the CLI. A cloud chat without either connection can prepare a JSON file for import:
+An assistant with a configured local MCP connection, or ChatGPT connected through Secure MCP Tunnel, can save directly. An assistant with access to the checkout can use the CLI. A chat without a Keystone connection can prepare a JSON file for import:
 
 ```sh
 python3 -m keystone capture --data ./data --file /path/to/capture.json
@@ -65,9 +65,13 @@ python3 -m keystone recall --data ./data "deployment" --budget 6000
 
 See the [capture format](skills/keystone-capture/references/capture-format.md). Existing-document updates require their current revision. Recall returns a bounded context bundle with source IDs and revisions; the budget is characters, not tokens. The token estimate is approximate. Search and recall currently use keywords.
 
-Keystone does not automatically access every previous conversation, monitor all work, or grant a cloud chat access to local files. Export only the relevant accessible evidence. Missing facts stay unknown. For a private custom GPT, the supplied [ChatGPT Actions setup](docs/cloud-chatgpt.md) connects the existing API after you host and configure HTTPS and authentication. That connection is not deployed automatically; a remote MCP transport remains [future work](docs/architecture.md#roadmap).
+Keystone does not automatically access every previous conversation or monitor all work. Export only the relevant accessible evidence; missing facts stay unknown. Configure [Secure MCP Tunnel](docs/chatgpt-tunnel.md) for ChatGPT access to the local vault, or [GPT Actions](docs/cloud-chatgpt.md) for a separately hosted HTTPS installation. A public authenticated MCP endpoint for browser-based Claude remains [future work](docs/architecture.md#roadmap).
 
 ## Connect your assistant
+
+For direct Claude Desktop chats, use the [Claude Desktop installer](docs/claude-desktop.md). It connects this vault to the desktop app and preserves existing settings. Browser-based Claude uses a separate remote connection.
+
+For ChatGPT, [Secure MCP Tunnel setup](docs/chatgpt-tunnel.md) connects the local vault without a public web server when your OpenAI account and workspace have the required access. It requires an account-associated tunnel and a runtime credential. The [GPT Actions option](docs/cloud-chatgpt.md) remains available for a separately hosted HTTPS installation.
 
 The bundled skills live in `skills/`:
 
@@ -86,7 +90,7 @@ The local MCP server starts with:
 python3 scripts/mcp_server.py --data /absolute/path/to/private-data
 ```
 
-An MCP client starts that process and communicates over standard input/output. It is not a website endpoint. See [assistant connections](docs/assistant-connections.md) for Codex and Claude Desktop configuration, tool names, and cloud handoff options. For hosted ChatGPT, use the prepared [Actions schema and setup guide](docs/cloud-chatgpt.md) after choosing your HTTPS host.
+An MCP client or OpenAI's tunnel client starts that process and communicates over standard input/output. See [assistant connections](docs/assistant-connections.md) for Codex and Claude Desktop configuration and tool names. ChatGPT can reach this local process through [Secure MCP Tunnel](docs/chatgpt-tunnel.md); a separately hosted HTTPS installation can use [GPT Actions](docs/cloud-chatgpt.md).
 
 ## Share with readers and add authors
 

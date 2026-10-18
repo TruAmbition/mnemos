@@ -27,6 +27,8 @@ Copy desired folders from `skills/` into the working project's `.agents/skills/`
 
 ## Claude Desktop local connection
 
+The [Claude Desktop installer](claude-desktop.md) performs a real connector preflight, merges the entry below, and preserves a backup of existing settings. Use `python3 scripts/install_claude_desktop.py --data ./data --apply`, then fully restart Claude Desktop.
+
 In the client's developer MCP configuration, merge this named entry with existing servers. Replace every illustrative path with an absolute path on your machine:
 
 ```json
@@ -64,6 +66,8 @@ Recall accepts a character budget, clamped to 500–24,000 characters. It return
 
 ## Cloud chat without a local connection
 
+ChatGPT can also reach this local stdio connector through [Secure MCP Tunnel](chatgpt-tunnel.md), subject to OpenAI account and workspace access. The tunnel client must remain running on the machine holding the vault. This is separate from a public remote MCP endpoint and does not connect Claude's web client.
+
 Use a manual exchange when ChatGPT, Claude, or Codex cannot access the installation:
 
 1. Ask the assistant to export the accessible task as a draft `context` document using the [capture JSON format](../skills/keystone-capture/references/capture-format.md).
@@ -73,4 +77,4 @@ Use a manual exchange when ChatGPT, Claude, or Codex cannot access the installat
 
 A useful context document states the goal, current state, constraints, decisions and rationale, failed approaches, unknowns, next actions, and sources. It should distinguish observed results from inference and omit credentials. It should not claim to summarize inaccessible older chats.
 
-For a private ChatGPT custom GPT, the prepared [Actions integration](cloud-chatgpt.md) can remove the manual step once you host the HTTP API over HTTPS, configure its dedicated credential, and verify the connection. This has not been tested end to end in your account. A remote MCP connector remains future work. Hosting the reader alone does not configure an assistant, and connecting one assistant does not connect every other assistant automatically.
+For a private ChatGPT custom GPT, the alternative [Actions integration](cloud-chatgpt.md) can remove the manual step once you host the HTTP API over HTTPS, configure its dedicated credential, and verify the connection. This Actions route has not been tested end to end. A public authenticated remote MCP connector for browser-based Claude remains future work. Hosting the reader alone does not configure an assistant, and connecting one assistant does not connect every other assistant automatically.

@@ -4,7 +4,7 @@ Validated on October 17, 2026, on macOS. This is a first working local release, 
 
 ## Automated checks
 
-The Python suite passed 39 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, and project-scoped agent configuration.
+The Python suite passed 59 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.
 
 The JavaScript helper suite passed 12 tests covering Markdown rendering and unsafe-link rejection, JSON and Markdown imports, draft enforcement, preservation of source references, dates, keyword relevance, and static recall budgets. Run it with `node --test tests/web.test.cjs`; Node is only needed for these development tests, not for running Keystone.
 
@@ -20,15 +20,20 @@ The ChatGPT Actions schema parses as JSON, resolves its local schema references,
 - Used the web portal to retrieve source-linked context and inspect a dependency-ordered workflow handoff.
 - Created a real local backup through the web portal and restored all 21 snapshot files into a separate directory with checksum verification.
 - Built a static reader export containing seven verified example documents, excluding the private draft and access configuration.
+- Installed the local connector in Claude Desktop 2.42304.0 while preserving and backing up its existing settings. Restarted the app and confirmed the connector was enabled.
+- Successfully called recall, search, and document read from a real Claude Desktop chat. The same chat saved a new draft context, which was independently verified in the vault.
+- Created an approved private OpenAI tunnel associated with the user's selected account/workspace and prepared its isolated local profile. The official tunnel-client release checksum was verified. After the user enabled the launching app's Documents access and supplied the runtime credential through hidden input, the local health and readiness checks both passed.
+- Connected Keystone as a private ChatGPT plugin. A real ChatGPT chat recalled six source documents and read the two project-specific notes. The same chat searched for, saved, and read back a new draft context; its title, status, content, and chat source URL were independently verified in the vault.
+- One ChatGPT document read initially failed with an MCP initialization error; a sequential retry succeeded. The subsequent search, capture, and read-back test also succeeded sequentially. The transient failure's cause is unconfirmed, so these checks do not establish error-free operation under concurrent hosted requests.
 
 ## Verification boundaries
 
 - Cloud backup command construction and failure handling were tested with mocks. No cloud credentials were supplied, so no live cloud upload was performed.
 - Windows and Linux installers were implemented but not executed on those operating systems. The repository includes a cross-platform CI workflow; it has not yet run on GitHub.
 - Browser save, read, recall, workflow, and backup flows were checked. The browser automation's file chooser did not return a selection event, so the file chooser itself has not been verified end to end. The importer is also available through the tested CLI.
-- Project-local Codex and Claude Code configurations were generated. Activating them requires the client to reopen/trust the project. A live Claude or separate Codex client connection was not exercised.
+- Project-local Codex and Claude Code configurations were generated. Activating them requires those clients to reopen/trust the project. The separate Claude Desktop connection was exercised live; Claude Code and a separate Codex client have not been exercised.
 - The prepared ChatGPT Actions adapter requires an HTTPS host and a configured credential. It has not been connected to a live custom GPT or tested end to end in ChatGPT.
-- The local MCP service uses standard input/output. An authenticated remote MCP deployment for cloud chats is a future integration.
+- The local MCP service uses standard input/output. The ChatGPT Secure MCP Tunnel route was exercised live and requires the local computer and tunnel process to remain running. A public authenticated remote MCP deployment for browser-based Claude remains a future integration.
 - Retrieval is keyword-based. Character budgets are enforced; token counts are estimates rather than tokenizer measurements.
 - Snapshot hashes detect corruption; they are not authenticity signatures. Cloud encryption depends on the selected rclone remote. Local vault and ZIP files are unencrypted.
 - Team reader hosting and a public source repository have not been deployed or created.
