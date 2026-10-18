@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Local stdio MCP tool server for an explicitly selected Mnemos installation.
+"""Local stdio MCP tool server for one Mnemos installation.
 
 Newline-delimited JSON-RPC. No network listener or model API is involved.
 The client launches this process with the same filesystem privileges as the user.
 """
 from __future__ import annotations
 import argparse
+from contextlib import nullcontext
 import json
 from pathlib import Path
 import sys
@@ -107,10 +108,16 @@ def handle(data, message):
         return {'jsonrpc': '2.0', 'id': request_id, 'error': {'code': -32602, 'message': str(error)}}
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', required=True)
-    args = parser.parse_args()
+    parser.add_argument('--data', help='Pin a vault; omitted resolves the selected default once at startup.')
+    args = parser.parse_args(argv)
+    from mnemos.installation import resolve_data
+    from mnemos import core, onboarding
+    uses_default = args.data is None
+    pointer = core.ROOT / 'data' / 'installation.json'
+    fingerprint = onboarding.selection_fingerprint(pointer) if uses_default else None
+    args.data = resolve_data(args.data)
     load_config(args.data)
     while True:
         line = sys.stdin.buffer.readline(2_000_001)
@@ -119,11 +126,23 @@ def main():
         if len(line) > 2_000_000:
             print('MCP message exceeds 2 MB; closing.', file=sys.stderr)
             return 1
-        try:
-            message = json.loads(line)
-            response = handle(args.data, message)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            response = {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Invalid JSON.'}}
+        # Default switches take the same lock; keep each call on one selection.
+        # Never hold this lock while waiting for client input.
+        with core.storage_lock(pointer.parent) if uses_default else nullcontext():
+            if uses_default:
+                try:
+                    unchanged = (onboarding.selection_fingerprint(pointer) == fingerprint
+                                 and resolve_data() == args.data)
+                except (ValueError, OSError):
+                    unchanged = False
+                if not unchanged:
+                    print('The active Mnemos default changed. Restart this MCP connection before using the new default; no request was handled.', file=sys.stderr)
+                    return 1
+            try:
+                message = json.loads(line)
+                response = handle(args.data, message)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                response = {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Invalid JSON.'}}
         if response is not None:
             print(json.dumps(response, ensure_ascii=False), flush=True)
     return 0

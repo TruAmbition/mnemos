@@ -8,10 +8,18 @@ from pathlib import Path
 import re
 import shlex
 import sys
+import uuid
 
 from . import core
 
 MODES = {'local', 'handoff', 'connected'}
+
+
+class SetupConflict(core.MnemosError):
+    def __init__(self, message, code='workspace_changed', restart_required=False):
+        super().__init__(message, 409)
+        self.code = code
+        self.restart_required = restart_required
 
 
 def data_directory(value):
@@ -46,10 +54,13 @@ def validate_target(value):
     config = initialized_config(data)
     if config is None and data.exists():
         remaining = [entry for entry in data.iterdir() if entry.name != '.DS_Store']
-        # A default launcher may contain only its own selected-installation pointer.
-        if len(remaining) == 1 and remaining[0].name == 'installation.json':
-            load_selection(remaining[0], data)
-            remaining = []
+        # Apply can already hold the cross-process installation lock here.
+        for entry in list(remaining):
+            if entry.name == '.keystone.lock' and not entry.is_symlink() and entry.is_file() and entry.stat().st_size <= 1:
+                remaining.remove(entry)
+            elif entry.name == 'installation.json':
+                load_selection(entry, data)
+                remaining.remove(entry)
         if remaining:
             raise core.MnemosError('This data folder already contains unrelated files. Choose a new, empty folder.')
     return data, config
@@ -137,9 +148,28 @@ def _backup_settings(data, payload, existing):
 
 
 def configure(current_data, payload):
-    if set(payload) - {'data_path', 'author', 'backup', 'assistant_mode', 'install_obsidian'}:
+    if set(payload) - {'mode', 'data_path', 'author', 'backup', 'assistant_mode', 'install_obsidian', 'expected_target_settings_revision'}:
         raise core.MnemosError('Setup accepts installation choices only. Do not submit credentials.')
+    action = payload.get('mode')
+    if not isinstance(action, str) or action not in {'update', 'create', 'select'}:
+        raise core.MnemosError('Choose update, create, or select explicitly.')
     data, existing = validate_target(payload.get('data_path', str(current_data)))
+    current_data = Path(current_data).resolve()
+    if action == 'update' and (data != current_data or existing is None):
+        raise core.MnemosError('Update can change only the active workspace. Choose create or select to change folders.')
+    if action == 'create' and existing is not None:
+        raise core.MnemosError('This workspace already exists. Choose select to use its saved settings.')
+    if action == 'select':
+        if existing is None:
+            raise core.MnemosError('Select an initialized Mnemos workspace, or choose create for a new folder.')
+        if set(payload) - {'mode', 'data_path', 'expected_target_settings_revision'}:
+            raise core.MnemosError('Selecting a workspace loads its own saved settings. Do not submit replacement settings.')
+        with core.storage_lock(data):
+            if payload.get('expected_target_settings_revision') != settings_revision(data):
+                raise SetupConflict('The selected workspace settings changed. Inspect the folder again before activating it.', 'settings_changed')
+            result = choices(data, core.load_config(data))
+        result.update(status='ready', warnings=[])
+        return data, result
     author = payload.get('author', existing.get('owner') if existing else 'Local engineer')
     if not isinstance(author, str) or not 1 <= len(author.strip()) <= 120 or any(ord(c) < 32 for c in author):
         raise core.MnemosError('Choose an author name between 1 and 120 characters.')
@@ -151,6 +181,10 @@ def configure(current_data, payload):
         raise core.MnemosError('The Obsidian installation choice must be true or false.')
     backup = _backup_settings(data, payload, existing)
     with core.storage_lock(data):
+        # Recheck after acquiring the storage lock; another process may have initialized it.
+        existing = initialized_config(data)
+        if action == 'create' and existing is not None:
+            raise SetupConflict('This folder was initialized by another process. Inspect it before selecting it.', 'settings_changed')
         config = core.initialize(data, author.strip()) if existing is None else core.load_config(data)
         # Preserve credentials, metadata, documents, and connector profiles.
         config.update(owner=author.strip(), backup=backup, assistant_mode=mode)
@@ -185,13 +219,6 @@ def load_selection(pointer, default):
         stored = json.loads(pointer.read_text('utf-8'))
         if not isinstance(stored, dict) or stored.get('format') != 'mnemos-installation-1':
             raise ValueError
-        default_config = Path(default).expanduser().resolve() / 'config.json'
-        if default_config.is_symlink():
-            raise ValueError
-        # An old selection must not override a default installation initialized
-        # or changed after the user made that selection.
-        if default_config.exists() and stored.get('source_config_sha256') != hashlib.sha256(default_config.read_bytes()).hexdigest():
-            return data_directory(Path(default).expanduser().resolve())
         data = data_directory(stored['data_path'])
         if initialized_config(data) is None:
             raise ValueError
@@ -200,13 +227,37 @@ def load_selection(pointer, default):
         raise core.MnemosError('The saved installation location is unavailable. Start with --data pointing to your intended installation.') from None
 
 
-def save_selection(pointer, data):
+def settings_revision(data):
+    path = Path(data) / 'config.json'
+    if path.is_symlink():
+        raise core.MnemosError('Configuration must not be a symbolic link.')
+    return hashlib.sha256(path.read_bytes() if path.exists() else b'').hexdigest()
+
+
+def selection_fingerprint(pointer):
+    pointer = Path(pointer)
+    data_directory(pointer.parent)
+    if pointer.is_symlink():
+        raise core.MnemosError('The installation selection must not be a symbolic link.')
+    return hashlib.sha256(pointer.read_bytes() if pointer.exists() else b'').hexdigest()
+
+
+def selection_revision(pointer):
+    pointer = Path(pointer)
+    selection_fingerprint(pointer)
+    if pointer.exists():
+        value = json.loads(pointer.read_text('utf-8')).get('revision')
+        if isinstance(value, str) and re.fullmatch(r'[0-9a-f]{32}', value):
+            return value
+    return uuid.uuid4().hex
+
+
+def save_selection(pointer, data, revision=None):
     pointer = Path(pointer)
     # The pointer belongs to the launcher directory, never to the vault itself.
     data_directory(pointer.parent)
     source_config = pointer.parent / 'config.json'
     if source_config.is_symlink():
         raise core.MnemosError('Configuration must not be a symbolic link.')
-    source_hash = hashlib.sha256(source_config.read_bytes()).hexdigest() if source_config.exists() else None
     core.atomic_write(pointer, json.dumps({'format': 'mnemos-installation-1', 'data_path': str(data),
-                                          'source_config_sha256': source_hash}, indent=2) + '\n')
+                                          'revision': revision or uuid.uuid4().hex}, indent=2) + '\n')

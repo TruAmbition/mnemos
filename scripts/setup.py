@@ -122,19 +122,20 @@ def install_obsidian(data):
     return found
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', default=str(ROOT / 'data'))
+    parser.add_argument('--data', help='Pin a data folder; omitted uses the selected default. Change the default through browser setup.')
     parser.add_argument('--author')
     parser.add_argument('--backup', choices=['local', 'rclone'])
     parser.add_argument('--destination')
     parser.add_argument('--remote')
     parser.add_argument('--skip-obsidian', action='store_true', help='For cloud/headless environments; leave desktop install unchanged.')
     parser.add_argument('--yes', action='store_true', help='Use defaults for unspecified setup choices.')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if sys.version_info < (3, 11):
         parser.exit(1, 'Python 3.11 or newer is required.\n')
-    data = Path(args.data).expanduser().absolute()
+    from mnemos.installation import resolve_data
+    data = Path(args.data).expanduser().absolute() if args.data is not None else resolve_data()
     if data.is_symlink():
         parser.exit(1, 'Choose a dedicated data directory, not a symlink.\n')
     data = data.resolve()

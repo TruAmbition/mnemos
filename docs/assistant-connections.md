@@ -4,12 +4,20 @@ Mnemos provides a local MCP server and a CLI. Both use the same dedicated vault.
 
 Start with a local client where practical. Its model may still process selected context in the cloud under that client's policies. For frequent direct ChatGPT access, compare [tunnel benefits, operating costs, and vault-wide access](chatgpt-tunnel.md#is-a-tunnel-worth-it) with the file handoff route before configuring a connection.
 
+## Workspace selection and pinned connections
+
+Browser setup maintains one active default per source checkout in `data/installation.json`. Reopen setup to update the active workspace, create a separate one, or select an initialized one. Selecting another workspace preserves the inactive folder; it neither moves notes nor merges libraries. Omitted `--data` arguments use the active default, with this checkout's `data/` as the initial fallback.
+
+`--data /absolute/path/to/private-data` explicitly pins an operation. The installers resolve the current selection once and write that absolute path into new assistant configurations. Existing Codex, Claude, and tunnel connections keep their original paths even when browser setup selects another workspace. Installer conflicts are reported without overwriting those settings; rerunning setup is not permission to grant an existing cloud connection access to another library.
+
+For a manually configured MCP process without `--data`, a default change closes the process before its next request. Restart it to use the new default. A process with an explicit path continues using its pinned workspace. Avoid switching a long-running task's source library without checking which workspace its client is connected to. The skills-only installer and skill ZIP export do not need a selected workspace.
+
 ## Project setup for Codex and Claude Code
 
 From the source checkout, run:
 
 ```sh
-python3 scripts/install_agents.py --data ./data --client both
+python3 scripts/install_agents.py --client both
 ```
 
 Choose `--client codex` or `--client claude` for one client. Add `--project /absolute/path/to/working-project` to configure another workspace. The installer writes only project-local Codex or Claude Code configuration and skill copies. It preserves unrelated MCP servers and reuses a matching legacy `keystone` entry without adding a duplicate. Conflicting definitions under either name are left unchanged. Reopen and trust the project in the client before checking tool discovery. This does not configure Claude Desktop; use its separate example below.
@@ -39,7 +47,7 @@ Copy desired folders from `skills/` into the working project's `.agents/skills/`
 
 ## Claude Desktop local connection
 
-The [Claude Desktop installer](claude-desktop.md) performs a real connector preflight, merges the entry below, and preserves a backup of existing settings. Use `python3 scripts/install_claude_desktop.py --data ./data --apply`, then fully restart Claude Desktop.
+The [Claude Desktop installer](claude-desktop.md) performs a real connector preflight, merges the entry below, and preserves a backup of existing settings. Use `python3 scripts/install_claude_desktop.py --apply`, then fully restart Claude Desktop.
 
 In the client's developer MCP configuration, merge this named entry with existing servers. Replace every illustrative path with an absolute path on your machine:
 

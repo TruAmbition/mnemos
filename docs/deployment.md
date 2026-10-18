@@ -5,8 +5,8 @@
 Run one application process for the private data directory. The default binds to `127.0.0.1:4318`, and local access is treated as the owner. On a shared machine, issue an owner token and require authentication:
 
 ```sh
-python3 -m mnemos token --data ./data --role owner --author "Library owner"
-python3 -m mnemos serve --data ./data --require-auth
+python3 -m mnemos token --role owner --author "Library owner"
+python3 -m mnemos serve --require-auth
 ```
 
 The library is plain local data. Use operating-system account permissions and disk protection appropriate to its contents. The default is not encrypted vault storage.

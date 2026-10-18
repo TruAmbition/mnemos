@@ -28,7 +28,7 @@ class OnboardingTests(unittest.TestCase):
         self.addCleanup(install.stop)
 
     def server(self, **options):
-        server = MnemosServer(('127.0.0.1', 0), self.data, **options)
+        server = MnemosServer(('127.0.0.1', 0), options.pop('data_path', self.data), **options)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         def stop():
@@ -42,8 +42,13 @@ class OnboardingTests(unittest.TestCase):
         connection = http.client.HTTPConnection('127.0.0.1', server.server_address[1], timeout=5)
         self.addCleanup(connection.close)
         request_headers = dict(headers or {})
+        request_headers.setdefault('X-Mnemos-Workspace', server.workspace_id)
         body = None
         if payload is not None:
+            payload = dict(payload)
+            if path in {'/api/setup', '/api/setup/inspect'}:
+                payload.setdefault('expected_workspace', server.active_workspace())
+                payload.setdefault('expected_settings_revision', onboarding.settings_revision(server.data_path))
             body = json.dumps(payload)
             request_headers.setdefault('Content-Type', 'application/json')
         connection.request(method, path, body, request_headers)
@@ -56,7 +61,8 @@ class OnboardingTests(unittest.TestCase):
         return response.status, content
 
     def payload(self, **extra):
-        result = {'data_path': str(self.data), 'author': 'Engineer', 'assistant_mode': 'local',
+        result = {'mode': 'update' if (self.data / 'config.json').exists() else 'create',
+                  'data_path': str(self.data), 'author': 'Engineer', 'assistant_mode': 'local',
                   'backup': {'provider': 'local', 'destination': str(self.data / 'backups'), 'remote': ''},
                   'install_obsidian': False}
         result.update(extra)
@@ -141,6 +147,23 @@ class OnboardingTests(unittest.TestCase):
             onboarding.configure(self.data, self.payload(data_path=str(target)))
         self.assertEqual(outside.read_text(), '{"version":1}')
 
+    def test_explicit_server_and_launcher_reject_data_symlink_before_resolving(self):
+        core.initialize(self.data, 'Owner')
+        link = self.base / 'linked-data'
+        try:
+            link.symlink_to(self.data, target_is_directory=True)
+        except OSError:
+            self.skipTest('Symlinks unavailable')
+        with self.assertRaisesRegex(ValueError, 'symbolic link'):
+            MnemosServer(('127.0.0.1', 0), link)
+        spec = importlib.util.spec_from_file_location('mnemos_launch_symlink_test', core.ROOT / 'scripts/launch.py')
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with patch.object(launcher.sys, 'argv', ['launch.py', '--data', str(link)]), \
+                patch.object(launcher, 'MnemosServer') as server, self.assertRaisesRegex(ValueError, 'symbolic link'):
+            launcher.main()
+        server.assert_not_called()
+
     def test_invalid_backup_or_modes_do_not_initialize(self):
         cases = [self.payload(backup={'provider': 'local', 'destination': str(self.data / 'vault/backups')}),
                  self.payload(backup={'provider': 'rclone', 'remote': 'https://user:secret@example.test'}),
@@ -198,13 +221,226 @@ class OnboardingTests(unittest.TestCase):
         _, result = onboarding.configure(self.data, self.payload(install_obsidian=True))
         self.assertTrue(result['obsidian']['installed'])
 
-    def test_stale_pointer_does_not_override_new_default_installation(self):
+    def test_explicit_selection_survives_default_and_selected_config_edits(self):
         custom = self.base / 'custom'
         core.initialize(custom, 'Custom')
         pointer = self.data / 'installation.json'
         onboarding.save_selection(pointer, custom)
         core.initialize(self.data, 'New default')
+        self.assertEqual(onboarding.load_selection(pointer, self.data), custom)
+        core.issue_token(custom, 'reader', 'Reader')
+        self.assertEqual(onboarding.load_selection(pointer, self.data), custom)
+
+    def test_create_new_default_preserves_previous_workspace_and_restarts_at_new_one(self):
+        core.initialize(self.data, 'Original')
+        note = core.save_document(self.data, {'title': 'Original only', 'body': 'Keep this evidence'})
+        token = core.issue_token(self.data, 'reader', 'Original reader')
+        profile = self.data / 'connections/chatgpt/keystone.yaml'
+        profile.parent.mkdir(parents=True)
+        profile.write_text('existing pinned profile')
+        original_config = (self.data / 'config.json').read_bytes()
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        old_id = server.workspace_id
+        custom = self.base / 'new default'
+        payload = self.payload(mode='create', data_path=str(custom), author='New author',
+                               backup={'provider': 'local', 'destination': str(custom / 'backups'), 'remote': ''})
+        status, result = self.request(server, 'POST', payload=payload)
+        self.assertEqual(status, 200, result)
+        self.assertNotEqual(result['workspace_id'], old_id)
+        self.assertEqual(result['previous_workspace']['data_path'], str(self.data))
+        self.assertEqual((self.data / 'config.json').read_bytes(), original_config)
+        self.assertEqual(core.get_document(self.data, note['id'])['revision'], note['revision'])
+        self.assertIsNotNone(core.authenticate(self.data, token))
+        self.assertEqual(profile.read_text(), 'existing pinned profile')
+        self.assertFalse((custom / 'connections').exists())
+        self.assertEqual(core.load_config(custom)['owner'], 'New author')
+        self.assertEqual(onboarding.load_selection(pointer, self.data), custom)
+        core.issue_token(self.data, 'author', 'Changed inactive settings')
+        core.issue_token(custom, 'reader', 'Changed active settings')
+        self.assertEqual(onboarding.load_selection(pointer, self.data), custom)
+        restarted = self.server(data_path=custom, installation_file=pointer)
+        status, overview = self.request(restarted)
+        self.assertEqual(status, 200)
+        self.assertEqual(overview['workspace_id'], result['workspace_id'])
+        self.assertEqual(overview['active_workspace']['data_path'], str(custom))
+        self.assertEqual(overview['setup_modes'], ['update', 'create', 'select'])
+
+    def test_inspect_is_read_only_and_select_uses_target_settings_without_overwriting(self):
+        target = self.base / 'existing'
+        core.initialize(target, 'Target author')
+        core.update_settings(target, {'backup': {'provider': 'rclone', 'destination': str(target / 'copies'), 'remote': 'drive:existing'}})
+        config = core.load_config(target)
+        config['assistant_mode'] = 'handoff'
+        core.save_config(target, config)
+        note = core.save_document(target, {'title': 'Target content', 'body': 'Retain the target'})
+        original = (target / 'config.json').read_bytes()
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        status, inspected = self.request(server, 'POST', '/api/setup/inspect', {'data_path': str(target)})
+        self.assertEqual(status, 200, inspected)
+        self.assertFalse(self.data.exists())
+        self.assertEqual(inspected['workspace']['author'], 'Target author')
+        self.assertEqual((target / 'config.json').read_bytes(), original)
+        status, result = self.request(server, 'POST', payload={'mode': 'select', 'data_path': str(target),
+            'expected_target_settings_revision': inspected['workspace']['settings_revision']})
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result['author'], 'Target author')
+        self.assertEqual(result['assistant_mode'], 'handoff')
+        self.assertEqual(result['backup']['remote'], 'drive:existing')
+        self.assertEqual((target / 'config.json').read_bytes(), original)
+        self.assertEqual(core.get_document(target, note['id'])['revision'], note['revision'])
+
+    def test_modes_reject_accidental_overwrite_or_workspace_switch(self):
+        core.initialize(self.data, 'Original')
+        target = self.base / 'existing'
+        core.initialize(target, 'Existing target')
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        original = (target / 'config.json').read_bytes()
+        payloads = [self.payload(mode='create', data_path=str(target)),
+                    self.payload(mode='update', data_path=str(target)),
+                    self.payload(mode='select', data_path=str(target)),
+                    {'mode': 'select', 'data_path': str(self.base / 'missing'), 'expected_target_settings_revision': ''}]
+        for payload in payloads:
+            with self.subTest(mode=payload['mode']):
+                status, result = self.request(server, 'POST', payload=payload)
+                self.assertEqual(status, 400, result)
+                self.assertEqual(server.data_path, self.data)
+        self.assertEqual((target / 'config.json').read_bytes(), original)
+        self.assertFalse(pointer.exists())
+
+    def test_stale_workspace_rejects_browser_mutation_and_download(self):
+        core.initialize(self.data, 'Original')
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        _, old = self.request(server)
+        target = self.base / 'new'
+        status, result = self.request(server, 'POST', payload=self.payload(mode='create', data_path=str(target)))
+        self.assertEqual(status, 200, result)
+        stale_headers = {'X-Mnemos-Workspace': old['workspace_id']}
+        status, result = self.request(server, 'POST', '/api/documents', {'title': 'Stale tab'}, stale_headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(result['code'], 'workspace_changed')
+        self.assertEqual(self.request(server, path='/api/export?workspace=' + old['workspace_id'])[0], 409)
+        payload = self.payload(mode='update', data_path=str(target), expected_workspace=old['active_workspace'],
+                               expected_settings_revision=old['settings_revision'])
+        self.assertEqual(self.request(server, 'POST', payload=payload)[0], 409)
+        self.assertFalse(any(doc['title'] == 'Stale tab' for doc in core.list_documents(target)))
+        self.assertEqual(self.request(server, 'POST', '/api/documents', {'title': 'Missing scope'}, {'X-Mnemos-Workspace': ''})[0], 409)
+
+    def test_stale_active_or_target_settings_are_rejected(self):
+        core.initialize(self.data, 'Original')
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        _, old = self.request(server)
+        core.issue_token(self.data, 'reader', 'New reader')
+        status, result = self.request(server, 'POST', payload=self.payload(expected_settings_revision=old['settings_revision']))
+        self.assertEqual(status, 409)
+        self.assertEqual(result['code'], 'settings_changed')
+        target = self.base / 'existing'
+        core.initialize(target, 'Target')
+        _, inspected = self.request(server, 'POST', '/api/setup/inspect', {'data_path': str(target)})
+        core.issue_token(target, 'reader', 'New target reader')
+        status, result = self.request(server, 'POST', payload={'mode': 'select', 'data_path': str(target),
+            'expected_target_settings_revision': inspected['workspace']['settings_revision']})
+        self.assertEqual(status, 409)
+        self.assertEqual(result['code'], 'settings_changed')
+        self.assertEqual(server.data_path, self.data)
+
+    def test_overview_pairs_displayed_settings_with_their_exact_revision(self):
+        core.initialize(self.data, 'Original')
+        server = self.server()
+        original_choices = onboarding.choices
+        changed = False
+        def concurrent_edit(data, *args):
+            nonlocal changed
+            result = original_choices(data, *args)
+            if not changed:
+                changed = True
+                config = core.load_config(data)
+                config['owner'] = 'Concurrent author'
+                core.save_config(data, config)
+            return result
+        with patch.object(onboarding, 'choices', side_effect=concurrent_edit):
+            status, result = self.request(server)
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result['author'], 'Concurrent author')
+        self.assertEqual(result['settings_revision'], onboarding.settings_revision(self.data))
+
+    def test_pointer_save_failure_keeps_previous_active_workspace(self):
+        core.initialize(self.data, 'Original')
+        pointer = self.data / 'installation.json'
+        onboarding.save_selection(pointer, self.data)
+        original_pointer = pointer.read_bytes()
+        server = self.server(installation_file=pointer)
+        old_id = server.workspace_id
+        target = self.base / 'new'
+        with patch.object(onboarding, 'save_selection', side_effect=OSError('Simulated disk failure')):
+            status, result = self.request(server, 'POST', payload=self.payload(mode='create', data_path=str(target)))
+        self.assertEqual(status, 500)
+        self.assertIn('previous workspace remains active', result['error'])
+        self.assertEqual(server.data_path, self.data)
+        self.assertEqual(server.workspace_id, old_id)
+        self.assertEqual(pointer.read_bytes(), original_pointer)
         self.assertEqual(onboarding.load_selection(pointer, self.data), self.data)
+        self.assertEqual(self.request(server, path='/api/bootstrap')[1]['session']['author'], 'Original')
+
+    def test_second_default_server_fails_closed_after_selection_changes(self):
+        core.initialize(self.data, 'Original')
+        pointer = self.data / 'installation.json'
+        first = self.server(installation_file=pointer)
+        second = self.server(installation_file=pointer)
+        target = self.base / 'new'
+        self.assertEqual(self.request(first, 'POST', payload=self.payload(mode='create', data_path=str(target)))[0], 200)
+        for method, path, payload in [('GET', '/api/bootstrap', None), ('GET', '/api/setup', None),
+                                      ('POST', '/api/documents', {'title': 'Stale server'}),
+                                      ('POST', '/api/setup', self.payload())]:
+            status, result = self.request(second, method, path, payload)
+            self.assertEqual(status, 409, result)
+            self.assertTrue(result['restart_required'])
+        self.assertEqual(onboarding.load_selection(pointer, self.data), target)
+        self.assertFalse(any(doc['title'] == 'Stale server' for doc in core.list_documents(self.data)))
+
+    def test_in_flight_mutation_finishes_in_its_original_workspace_before_activation(self):
+        core.initialize(self.data, 'Original')
+        pointer = self.data / 'installation.json'
+        server = self.server(installation_file=pointer)
+        old_id = server.workspace_id
+        target = self.base / 'next'
+        entered, release, switch_finished = threading.Event(), threading.Event(), threading.Event()
+        results = {}
+        original_save = core.save_document
+        def delayed_save(data, payload, *args):
+            entered.set()
+            if not release.wait(3):
+                raise RuntimeError('Test failed to release the pending write')
+            return original_save(data, payload, *args)
+        def write():
+            results['write'] = self.request(server, 'POST', '/api/documents', {'title': 'In-flight document'},
+                                            {'X-Mnemos-Workspace': old_id})
+        def switch():
+            try:
+                results['switch'] = self.request(server, 'POST', payload=self.payload(mode='create', data_path=str(target)))
+            finally:
+                switch_finished.set()
+        with patch.object(core, 'save_document', side_effect=delayed_save):
+            writer = threading.Thread(target=write)
+            switcher = threading.Thread(target=switch)
+            writer.start()
+            try:
+                self.assertTrue(entered.wait(3))
+                switcher.start()
+                self.assertFalse(switch_finished.wait(0.1))
+            finally:
+                release.set()
+                writer.join(timeout=5)
+                if switcher.ident is not None:
+                    switcher.join(timeout=5)
+        self.assertEqual(results['write'][0], 200, results)
+        self.assertEqual(results['switch'][0], 200, results)
+        self.assertTrue(any(doc['title'] == 'In-flight document' for doc in core.list_documents(self.data)))
+        self.assertFalse(any(doc['title'] == 'In-flight document' for doc in core.list_documents(target)))
 
     def test_copied_commands_quote_paths_and_shell_metacharacters_literally(self):
         arguments = [r'C:\Program Files\Python\python.exe', r"C:\Mnemos's Tools\scripts\install_agents.py",

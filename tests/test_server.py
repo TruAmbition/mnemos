@@ -38,6 +38,7 @@ class ServerTests(unittest.TestCase):
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         self.addCleanup(connection.close)
         request_headers = dict(headers or {})
+        request_headers.setdefault('X-Mnemos-Workspace', self.server.workspace_id)
         body = None
         if payload is not None:
             body = json.dumps(payload)

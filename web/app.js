@@ -37,7 +37,7 @@
     lock:'M6 10h12v11H6z M8 10V6a4 4 0 0 1 8 0v4',
   };
   const icon = (name, extra = '') => `<svg class="icon ${extra}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.runbook}"/></svg>`;
-  const state = {data:null,view:'library',query:'',type:'all',project:'all',layout:'grid',editing:null,editorMode:'write',backups:[],recall:null,recallQuery:'',recallBudget:6000,handoff:null,handoffQuery:'',handoffBudget:6000,handoffSelected:[]};
+  const state = {data:null,view:'library',query:'',type:'all',project:'all',layout:'grid',editing:null,editorMode:'write',backups:[],recall:null,recallQuery:'',recallBudget:6000,handoff:null,handoffQuery:'',handoffBudget:6000,handoffSelected:[],workspaceStale:false,workspaceRestart:false,recovery:null};
   let toastTimer, lastFocus, currentDocument, modalController, dirty = false;
   const role = () => staticMode ? 'reader' : (state.data?.session?.role || 'reader');
   const canWrite = () => !staticMode && ['owner','author'].includes(role());
@@ -66,37 +66,85 @@
     element.hidden = false;
     toastTimer = setTimeout(() => { element.hidden = true; }, error ? 7000 : 4000);
   }
+  function workspaceHeaders(data,path) {
+    return data?.workspace_id&&path!=='/api/bootstrap'?{'X-Mnemos-Workspace':data.workspace_id}:{};
+  }
+  function workspaceDownloadURL(path,workspaceId=state.data?.workspace_id) {
+    return workspaceId?path+(path.includes('?')?'&':'?')+'workspace='+encodeURIComponent(workspaceId):path;
+  }
+  function recoveryFromValues(values,workspace) {
+    const split=(value,separator)=>String(value||'').split(separator).map(item=>item.trim()).filter(Boolean);
+    return {version:1,workspace_id:workspace?.workspace_id||'',workspace_path:workspace?.active_workspace?.data_path||'',original_document_id:values.id||'',document:{title:values.title||'',type:values.type||'context',project:values.project||'',summary:values.summary||'',body:values.body||'',status:'draft',tags:split(values.tags,','),sources:split(values.sources,'\n'),related_ids:split(values.related_ids,',')}};
+  }
+  function readRecovery() {
+    try{const saved=JSON.parse(sessionStorage.getItem('mnemos-draft-recovery')||'null');return saved?.version===1&&typeof saved.document?.body==='string'?saved:null;}catch{return null;}
+  }
+  function preserveUnsavedDraft() {
+    const form=$('#capture-form');
+    if(!dirty||!form)return;
+    const fields=Object.fromEntries(new FormData(form).entries());
+    state.recovery=recoveryFromValues(fields,state.data);
+    try{sessionStorage.setItem('mnemos-draft-recovery',JSON.stringify(state.recovery));}catch{/* The current form and in-memory recovery remain available. */}
+  }
+  function markWorkspaceStale(result) {
+    state.workspaceStale=true;state.workspaceRestart=!!result.restart_required;
+    preserveUnsavedDraft();updateWorkspaceNotice();
+  }
+  function updateWorkspaceNotice() {
+    $('#workspace-notice')?.remove();
+    if(!state.workspaceStale&&!state.recovery)return;
+    const main=$('#main');if(!main)return;
+    const title=state.workspaceStale?'The active workspace changed.':'Your previous draft is still available.';
+    const description=state.workspaceStale?(state.workspaceRestart?'The default changed in another local server. Restart this server with the normal launcher before continuing. This tab’s unsaved draft is preserved.':'This tab still shows the previous workspace. Reload to open the active library. Any unsaved capture draft is kept in this browser tab and will not be saved into the new workspace automatically.'):'A draft from the previous workspace is kept in this browser tab. Download it, then import it into the intended workspace after reviewing its destination.';
+    main.insertAdjacentHTML('afterbegin',`<section class="workspace-notice" id="workspace-notice" role="status"><div><strong>${title}</strong><p>${description}</p>${state.recovery?.workspace_path?`<small>Draft source: ${escape(state.recovery.workspace_path)}</small>`:''}</div><div class="workspace-notice-actions">${state.workspaceStale&&!state.workspaceRestart?'<button class="button small primary" data-action="reload-active-workspace">Reload active workspace</button>':''}${state.recovery?'<button class="button small" data-action="download-recovered-draft">Download draft</button>':''}${state.recovery&&!state.workspaceStale?'<button class="button text small" data-action="dismiss-recovered-draft">Dismiss saved draft</button>':''}</div></section>`);
+  }
+  async function reloadActiveWorkspace() {
+    if(state.workspaceRestart)return;
+    preserveUnsavedDraft();dirty=false;state.editing=null;state.workspaceStale=false;
+    state.query='';state.type='all';state.project='all';state.recall=null;state.handoff=null;state.handoffSelected=[];
+    closeOverlay();window.location.hash='library';await load();
+  }
+  function activeWorkspacePanel() {
+    const path=state.data.active_workspace?.data_path;
+    if(!path)return '';
+    return `<section class="active-workspace-panel"><div><span class="workspace-active-badge"><i></i> Active workspace</span><code>${escape(path)}</code><p>${state.data.setup_available?'Review this setup or choose another default. Inactive libraries stay on disk.':'This server uses its configured workspace. Use the normal local launcher to manage the toolkit’s default.'}</p></div>${state.data.setup_available?'<a class="button small" href="/setup.html">Review or rerun setup →</a>':''}</section>`;
+  }
   async function api(path, options = {}) {
-    const response = await fetch(path, {credentials:'same-origin', ...options, headers:{...(options.body ? {'Content-Type':'application/json'} : {}),...options.headers}});
+    const response = await fetch(path, {credentials:'same-origin', ...options, headers:{...(options.body ? {'Content-Type':'application/json'} : {}),...workspaceHeaders(state.data,path),...options.headers}});
     let result;
     try { result = await response.json(); } catch { throw new Error(`The vault returned an unreadable response (${response.status}).`); }
     if(path==='/api/bootstrap'&&response.status===409&&result.setup_required===true&&result.setup_url==='/setup.html')return result;
-    if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status}).`);
+    if(!response.ok){if(result.code==='workspace_changed')markWorkspaceStale(result);const error=new Error(result.error||result.message||`Request failed (${response.status}).`);error.code=result.code;error.restartRequired=!!result.restart_required;throw error;}
     return result;
   }
   async function load() {
+    state.recovery ||= readRecovery();
     try {
       state.data = staticMode ? await (async () => {const result = await fetch('data.json'); if (!result.ok) throw new Error('The preview data could not be loaded.'); return result.json();})() : await api('/api/bootstrap');
       if(state.data.setup_url === '/setup.html'){window.location.assign('/setup.html');return;}
       state.data.documents ||= []; state.data.workflows ||= []; state.data.settings ||= {};
       updateChrome();
       route();
+      updateWorkspaceNotice();
     } catch (error) {
       $('#main').innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('cloud')}</div><h1>Your vault is not connected</h1><p>${escape(error.message)}</p><button class="button primary" data-action="reload">Try again</button></div>`;
       $('#connection-label').textContent = 'Connection unavailable';
+      updateWorkspaceNotice();
     }
   }
   function updateChrome() {
     const links = [{id:'library',label:'Library',count:documents().length},{id:'recall',label:'Recall context'},{id:'handoff',label:'Cloud handoff'},{id:'workflows',label:'Workflows',count:workflows().length}];
     if (canWrite()) links.splice(1,0,{id:'capture',label:'Capture knowledge'});
     if (isOwner() || staticMode) links.push({id:'settings',label:staticMode ? 'About this vault' : 'Settings',divider:true});
-    if(isOwner()&&state.data.setup_available===true)links.push({id:'setup',label:'Local setup',href:'/setup.html'});
+    if(isOwner()&&state.data.setup_available===true)links.push({id:'setup',label:'Workspace setup',href:'/setup.html'});
     $('#navigation').innerHTML = links.map(item => `${item.divider ? '<div class="nav-divider"></div>' : ''}<a href="${item.href||'#'+item.id}" class="nav-item${state.view===item.id ? ' active' : ''}" ${state.view===item.id?'aria-current="page"':''}>${icon(item.id)}<span>${item.label}</span>${item.count !== undefined ? `<span class="count">${item.count}</span>` : ''}</a>`).join('');
     const author = state.data.session?.author || role();
     $('#account-avatar').textContent = String(author || 'R').slice(0,1).toUpperCase();
     $('#account-role').textContent = role() === 'anonymous' ? 'Sign in' : role().slice(0,1).toUpperCase()+role().slice(1);
     $('#preview-badge').hidden = !staticMode;
     $('#connection-label').textContent = staticMode ? 'Portable reader preview' : role() === 'anonymous' ? 'Sign in to open your vault' : 'Connected to your vault';
+    const activePath=state.data.active_workspace?.data_path;
+    const workspaceSmall=$('.workspace-label small');if(workspaceSmall&&activePath)workspaceSmall.textContent=activePath.split(/[\\/]/).filter(Boolean).at(-1)+' · active workspace';
     $('#footer-version').textContent = `v${state.data.app?.version || '1.0'} · Markdown, made useful.`;
   }
   function navigate(view) {
@@ -123,8 +171,9 @@
     const labels = {library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
     document.title = `${labels[state.view]} · Mnemos`;
-    if (role()==='anonymous') { renderLocked(); return; }
+    if (role()==='anonymous') { renderLocked(); updateWorkspaceNotice(); return; }
     ({library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
+    updateWorkspaceNotice();
   }
   function heading(eyebrow, title, description, action='') {
     return `<div class="page-heading"><div><span class="eyebrow">${escape(eyebrow)}</span><h1>${escape(title)}</h1><p>${escape(description)}</p></div>${action}</div>`;
@@ -453,7 +502,7 @@
   }
   function renderHandoff() {
     $('#main').innerHTML=heading('YOUR KNOWLEDGE, WHERE YOU WORK','A handoff. Without a tunnel.','Bring selected knowledge into a cloud chat, then bring the useful work back as a reviewed draft.')+
-      `<div class="handoff-steps"><div><span>01</span><strong>Choose the context</strong><p>Find and review the sources you want to share.</p></div><div><span>02</span><strong>Work in your cloud chat</strong><p>Download a pack and attach it yourself.</p></div><div><span>03</span><strong>Bring the learning home</strong><p>Import the returned JSON, review it, and save a draft.</p></div></div><form id="handoff-form" class="panel" style="margin-bottom:24px"><div class="field"><label for="handoff-query">What will the cloud assistant work on?</label><input id="handoff-query" name="query" type="search" required maxlength="1000" placeholder="e.g. Continue the deployment recovery work" value="${escape(state.handoffQuery)}"></div><div class="form-row" style="align-items:end"><div class="field" style="margin-bottom:0"><label for="handoff-budget">Context preview size</label><select id="handoff-budget" name="budget">${[[3000,'Compact · 3,000 characters'],[6000,'Balanced · 6,000 characters'],[12000,'Detailed · 12,000 characters']].map(([value,label])=>`<option value="${value}"${state.handoffBudget===value?' selected':''}>${label}</option>`).join('')}</select></div><button class="button primary" type="submit" id="handoff-submit" style="justify-self:end">${icon('search')} Find source material</button></div><p class="search-hint" style="margin:14px 0 0">You choose what leaves your vault. Mnemos does not upload content or connect your cloud accounts.</p></form><div id="handoff-results"></div><div class="handoff-bottom"><section class="panel"><div class="panel-heading">${icon('capture')}<h2>Bring the result back</h2></div><p>Ask your assistant for a draft JSON document using the instructions in the context pack. Import it in Capture knowledge, inspect the preview and source links, then save.</p>${canWrite()?'<button class="button" data-action="go-capture">Import a returned draft '+icon('arrow')+'</button>':'<p class="handoff-note">An author or owner can import and save the returned draft.</p>'}</section><section class="panel"><div class="panel-heading">${icon('knowledge')}<h2>Give your assistant a useful routine</h2></div><p>Portable skills explain how to capture, recall, and orchestrate documented work. Direct local vault access requires an assistant with permitted filesystem access and tools.</p>${canWrite()?'<a class="button" href="/api/skills/export" download="mnemos-skills.zip">'+icon('download')+' Download portable skills</a>':'<p class="handoff-note">'+(staticMode?'Skill downloads are available when you run your own toolkit.':'Ask an author or owner to download the portable skills for your workflow.')+'</p>'}</section></div>`;
+      `<div class="handoff-steps"><div><span>01</span><strong>Choose the context</strong><p>Find and review the sources you want to share.</p></div><div><span>02</span><strong>Work in your cloud chat</strong><p>Download a pack and attach it yourself.</p></div><div><span>03</span><strong>Bring the learning home</strong><p>Import the returned JSON, review it, and save a draft.</p></div></div><form id="handoff-form" class="panel" style="margin-bottom:24px"><div class="field"><label for="handoff-query">What will the cloud assistant work on?</label><input id="handoff-query" name="query" type="search" required maxlength="1000" placeholder="e.g. Continue the deployment recovery work" value="${escape(state.handoffQuery)}"></div><div class="form-row" style="align-items:end"><div class="field" style="margin-bottom:0"><label for="handoff-budget">Context preview size</label><select id="handoff-budget" name="budget">${[[3000,'Compact · 3,000 characters'],[6000,'Balanced · 6,000 characters'],[12000,'Detailed · 12,000 characters']].map(([value,label])=>`<option value="${value}"${state.handoffBudget===value?' selected':''}>${label}</option>`).join('')}</select></div><button class="button primary" type="submit" id="handoff-submit" style="justify-self:end">${icon('search')} Find source material</button></div><p class="search-hint" style="margin:14px 0 0">You choose what leaves your vault. Mnemos does not upload content or connect your cloud accounts.</p></form><div id="handoff-results"></div><div class="handoff-bottom"><section class="panel"><div class="panel-heading">${icon('capture')}<h2>Bring the result back</h2></div><p>Ask your assistant for a draft JSON document using the instructions in the context pack. Import it in Capture knowledge, inspect the preview and source links, then save.</p>${canWrite()?'<button class="button" data-action="go-capture">Import a returned draft '+icon('arrow')+'</button>':'<p class="handoff-note">An author or owner can import and save the returned draft.</p>'}</section><section class="panel"><div class="panel-heading">${icon('knowledge')}<h2>Give your assistant a useful routine</h2></div><p>Portable skills explain how to capture, recall, and orchestrate documented work. Direct local vault access requires an assistant with permitted filesystem access and tools.</p>${canWrite()?'<a class="button" href="'+escape(workspaceDownloadURL('/api/skills/export'))+'" download="mnemos-skills.zip">'+icon('download')+' Download portable skills</a>':'<p class="handoff-note">'+(staticMode?'Skill downloads are available when you run your own toolkit.':'Ask an author or owner to download the portable skills for your workflow.')+'</p>'}</section></div>`;
     $('#handoff-form').addEventListener('submit',runHandoff);
     if(state.handoff)renderHandoffResults();
   }
@@ -479,8 +528,8 @@
       $('#main').innerHTML=heading('PORTABLE BY DESIGN','Your knowledge. Your files.','This is a read-only preview of a Mnemos vault. The full toolkit connects the reader, your AI workflow, and an isolated Obsidian vault.')+`<div class="settings-layout"><section class="panel"><div class="panel-heading">${icon('shield')}<h2>A durable home for engineering knowledge</h2></div><p>Mnemos stores documents as ordinary Markdown files with structured metadata. Obsidian and this portal read the same knowledge.</p><div class="settings-fact"><span>Preview access</span><strong>Read only</strong></div><div class="settings-fact"><span>Knowledge items</span><strong>${documents().length}</strong></div><div class="settings-fact"><span>Workflow execution</span><strong>Reviewable plans only</strong></div><div class="settings-fact"><span>Storage</span><strong>Your own isolated vault</strong></div><div class="settings-fact"><span>Backup choices</span><strong>Local folder or rclone remote</strong></div>${notice('This preview uses example documents. It does not create a vault, connect to cloud storage, or back up your files.')}<p style="margin-bottom:0">Run the downloadable toolkit to create your own vault, choose a backup destination, and enable authoring.</p></section><section class="panel"><div class="panel-heading">${icon('knowledge')}<h2>Ready for a team</h2></div><p>Start with one author and invite more contributors as the library grows.</p><dl class="role-grid"><dt>Owner</dt><dd>Configures the vault, manages backups, and verifies documentation.</dd><dt>Author</dt><dd>Creates and updates drafts with traceable source evidence.</dd><dt>Reader</dt><dd>Finds knowledge, recalls context, and reviews workflows.</dd></dl></section></div>`;return;
     }
     const settings=state.data.settings||{};const backup=settings.backup||{};
-    $('#main').innerHTML=heading('A VAULT YOU CONTROL','Keep your knowledge safe.','Choose where your documentation lives and where its backups go.')+
-      `<div class="settings-layout"><div><form class="panel" id="backup-form"><div class="panel-heading">${icon('cloud')}<h2>Backup destination</h2></div><p>Save a separate copy of your vault. Backups run when you request them; configure scheduling outside this portal if needed.</p><div class="backup-choice"><label><input type="radio" name="provider" value="local"${backup.provider!=='rclone'?' checked':''}><span><strong>Local storage</strong><small>A folder or a mounted backup drive.</small></span></label><label><input type="radio" name="provider" value="rclone"${backup.provider==='rclone'?' checked':''}><span><strong>Cloud storage</strong><small>A remote you have configured in rclone.</small></span></label></div><div class="field" id="local-destination-field"${backup.provider==='rclone'?' hidden':''}><label for="backup-destination">Backup folder</label><input id="backup-destination" name="destination" value="${escape(backup.destination||'')}" placeholder="/absolute/path/to/mnemos-backups"><small>Use a destination outside your vault, ideally on a separate device.</small></div><div class="field" id="cloud-remote-field"${backup.provider!=='rclone'?' hidden':''}><label for="backup-remote">rclone remote destination</label><input id="backup-remote" name="remote" value="${escape(backup.remote||'')}" placeholder="myremote:mnemos-backups"><small>Configure the remote in rclone first. Mnemos uses its existing connection; no cloud credentials are entered here.</small></div><div id="backup-settings-error" aria-live="polite"></div><div class="form-actions"><span>Choose a destination, save, then back up.</span><button class="button primary" type="submit" id="save-backup-settings">Save destination</button></div><div class="backup-history-heading"><h3>Backup history</h3><button type="button" class="button small" id="backup-now" data-action="backup-now">${icon('shield')} Back up now</button></div><div id="backup-history"><div class="backup-empty">Loading backup history…</div></div></form><section class="panel"><div class="panel-heading">${icon('download')}<h2>Export your vault</h2></div><p>Download a portable ZIP of your knowledge. Keep a copy or move it into another workflow.</p><a class="button" href="/api/export" download="mnemos-vault.zip">${icon('download')} Download vault ZIP</a></section></div><aside class="settings-aside"><section class="panel"><div class="panel-heading">${icon('folder')}<h2>Your vault</h2></div><p>Mnemos uses a separate directory to keep your existing Obsidian workspaces independent.</p><span class="field-label">Vault location</span><div class="path-display">${escape(settings.vault_path||'Not provided by the server')}</div><div class="settings-fact"><span>Obsidian</span><strong>${settings.obsidian_installed?'Installed':'Not detected'}</strong></div><div class="settings-fact"><span>Format</span><strong>Markdown</strong></div><div class="settings-fact"><span>Documents</span><strong>${documents().length}</strong></div>${!settings.obsidian_installed?'<p style="font-size:10px;margin:15px 0 0;line-height:1.8">Use the toolkit setup command to check or install Obsidian for your operating system.</p>':''}</section><section class="panel"><div class="panel-heading">${icon('lock')}<h2>Access & contributions</h2></div><p>Access is assigned with separate owner, author, and reader tokens.</p><dl class="role-grid"><dt>Owner</dt><dd>Configure, author, verify, and back up.</dd><dt>Author</dt><dd>Create and edit documentation drafts.</dd><dt>Reader</dt><dd>Browse knowledge, recall context, and review plans.</dd></dl><button class="button small" data-action="account" style="margin-top:20px">Manage this session ${icon('arrow')}</button></section></aside></div>`;
+    $('#main').innerHTML=heading('A VAULT YOU CONTROL','Keep your knowledge safe.','Choose where your documentation lives and where its backups go.')+activeWorkspacePanel()+
+      `<div class="settings-layout"><div><form class="panel" id="backup-form"><div class="panel-heading">${icon('cloud')}<h2>Backup destination</h2></div><p>Save a separate copy of your vault. Backups run when you request them; configure scheduling outside this portal if needed.</p><div class="backup-choice"><label><input type="radio" name="provider" value="local"${backup.provider!=='rclone'?' checked':''}><span><strong>Local storage</strong><small>A folder or a mounted backup drive.</small></span></label><label><input type="radio" name="provider" value="rclone"${backup.provider==='rclone'?' checked':''}><span><strong>Cloud storage</strong><small>A remote you have configured in rclone.</small></span></label></div><div class="field" id="local-destination-field"${backup.provider==='rclone'?' hidden':''}><label for="backup-destination">Backup folder</label><input id="backup-destination" name="destination" value="${escape(backup.destination||'')}" placeholder="/absolute/path/to/mnemos-backups"><small>Use a destination outside your vault, ideally on a separate device.</small></div><div class="field" id="cloud-remote-field"${backup.provider!=='rclone'?' hidden':''}><label for="backup-remote">rclone remote destination</label><input id="backup-remote" name="remote" value="${escape(backup.remote||'')}" placeholder="myremote:mnemos-backups"><small>Configure the remote in rclone first. Mnemos uses its existing connection; no cloud credentials are entered here.</small></div><div id="backup-settings-error" aria-live="polite"></div><div class="form-actions"><span>Choose a destination, save, then back up.</span><button class="button primary" type="submit" id="save-backup-settings">Save destination</button></div><div class="backup-history-heading"><h3>Backup history</h3><button type="button" class="button small" id="backup-now" data-action="backup-now">${icon('shield')} Back up now</button></div><div id="backup-history"><div class="backup-empty">Loading backup history…</div></div></form><section class="panel"><div class="panel-heading">${icon('download')}<h2>Export your vault</h2></div><p>Download a portable ZIP of your knowledge. Keep a copy or move it into another workflow.</p><a class="button" href="${escape(workspaceDownloadURL('/api/export'))}" download="mnemos-vault.zip">${icon('download')} Download vault ZIP</a></section></div><aside class="settings-aside"><section class="panel"><div class="panel-heading">${icon('folder')}<h2>Your vault</h2></div><p>Mnemos uses a separate directory to keep your existing Obsidian workspaces independent.</p><span class="field-label">Vault location</span><div class="path-display">${escape(settings.vault_path||'Not provided by the server')}</div><div class="settings-fact"><span>Obsidian</span><strong>${settings.obsidian_installed?'Installed':'Not detected'}</strong></div><div class="settings-fact"><span>Format</span><strong>Markdown</strong></div><div class="settings-fact"><span>Documents</span><strong>${documents().length}</strong></div>${!settings.obsidian_installed?'<p style="font-size:10px;margin:15px 0 0;line-height:1.8">Use the toolkit setup command to check or install Obsidian for your operating system.</p>':''}</section><section class="panel"><div class="panel-heading">${icon('lock')}<h2>Access & contributions</h2></div><p>Access is assigned with separate owner, author, and reader tokens.</p><dl class="role-grid"><dt>Owner</dt><dd>Configure, author, verify, and back up.</dd><dt>Author</dt><dd>Create and edit documentation drafts.</dd><dt>Reader</dt><dd>Browse knowledge, recall context, and review plans.</dd></dl><button class="button small" data-action="account" style="margin-top:20px">Manage this session ${icon('arrow')}</button></section></aside></div>`;
     $('#backup-form').addEventListener('change',event=>{if(event.target.name==='provider'){$('#local-destination-field').hidden=event.target.value==='rclone';$('#cloud-remote-field').hidden=event.target.value!=='rclone';}});
     $('#backup-form').addEventListener('submit',saveBackupSettings);
     loadBackups();
@@ -540,6 +589,9 @@
     if(target.closest('#navigation')&&target.getAttribute('href').startsWith('#')){event.preventDefault();navigate(target.getAttribute('href').slice(1));return;}
     switch(target.dataset.action){
       case 'reload':load();break;
+      case 'reload-active-workspace':await reloadActiveWorkspace();break;
+      case 'download-recovered-draft':if(state.recovery)downloadText('mnemos-recovered-draft.json',JSON.stringify(state.recovery.document,null,2),'application/json');break;
+      case 'dismiss-recovered-draft':state.recovery=null;try{sessionStorage.removeItem('mnemos-draft-recovery');}catch{}updateWorkspaceNotice();break;
       case 'toggle-paste':{const panel=$('#paste-panel');panel.hidden=!panel.hidden;target.setAttribute('aria-expanded',String(!panel.hidden));break;}
       case 'preview-paste':previewPastedDraft();break;
       case 'new-document':if(dirty&&!confirm('Replace the unsaved draft?'))break;state.editing=null;dirty=false;navigate('capture');break;

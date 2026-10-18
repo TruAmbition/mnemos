@@ -7,12 +7,14 @@ import mimetypes
 import secrets
 import threading
 import time
+import uuid
+from contextlib import nullcontext
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
-from . import __version__, core
+from . import __version__, core, onboarding
 
 
 def is_loopback(host: str) -> bool:
@@ -28,12 +30,25 @@ class MnemosServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, address, data_path, public_hosts=(), handler=None, require_auth=False, installation_file=None):
-        self.data_path = Path(data_path).expanduser().resolve()
+        supplied_data = Path(data_path).expanduser().absolute()
+        if supplied_data.is_symlink():
+            raise core.MnemosError('The Mnemos data folder must not be a symbolic link.')
+        self.data_path = supplied_data.resolve()
         bound_loopback = is_loopback(address[0])
         self.local_owner = bound_loopback and not require_auth
         self.setup_enabled = self.local_owner and not public_hosts
         self.installation_file = Path(installation_file) if installation_file else None
         self.setup_lock = threading.Lock()
+        self.workspace_lock = threading.RLock()
+        self.workspace_id = uuid.uuid4().hex
+        self.selection_fingerprint = None
+        if self.installation_file:
+            before = onboarding.selection_fingerprint(self.installation_file)
+            selected = onboarding.load_selection(self.installation_file, self.installation_file.parent)
+            self.workspace_id = onboarding.selection_revision(self.installation_file)
+            self.selection_fingerprint = onboarding.selection_fingerprint(self.installation_file)
+            if selected != self.data_path or before != self.selection_fingerprint:
+                raise core.MnemosError('The default workspace changed while launching. Start the launcher again.')
         if (self.data_path / 'config.json').exists():
             core.load_config(self.data_path)
         elif not self.setup_enabled:
@@ -53,6 +68,16 @@ class MnemosServer(ThreadingHTTPServer):
                 self.server_close()
                 raise core.MnemosError("--public-host must be a hostname, optionally including its port.")
             self.allowed_hosts.add(name.lower())
+
+    def active_workspace(self, include_path=True):
+        result = {'revision': self.workspace_id, 'name': self.data_path.name}
+        if include_path:
+            result['data_path'] = str(self.data_path)
+        return result
+
+    def assert_selection_current(self):
+        if self.installation_file and onboarding.selection_fingerprint(self.installation_file) != self.selection_fingerprint:
+            raise onboarding.SetupConflict('The default workspace changed in another process. Restart this server before continuing.', restart_required=True)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -152,36 +177,126 @@ class Handler(BaseHTTPRequestHandler):
         elif self.headers.get('Authorization'):
             raise core.MnemosError('Initialize this local installation without a shared access token.', 403)
 
+    def _workspace_guard(self, method, parsed):
+        markers = [self.headers.get('X-Mnemos-Workspace'), *parse_qs(parsed.query).get('workspace', [])]
+        if any(marker is not None and marker != self.server.workspace_id for marker in markers):
+            raise onboarding.SetupConflict('The active workspace changed. Reload the library before applying changes or downloading files.')
+        browser = self.headers.get('Origin') or self.headers.get('Sec-Fetch-Site')
+        local_owner = self.server.local_owner and not self.headers.get('Authorization')
+        if method == 'POST' and (browser or local_owner) and not self.headers.get('X-Mnemos-Workspace'):
+            raise onboarding.SetupConflict('Reload the library to identify the active workspace before applying changes.')
+
+    def _setup_metadata(self):
+        initialized = (self.server.data_path / 'config.json').exists()
+        default = self.server.installation_file is not None
+        return {'active_workspace': self.server.active_workspace(), 'workspace_id': self.server.workspace_id,
+                'settings_revision': onboarding.settings_revision(self.server.data_path),
+                'setup_modes': (['update', 'create', 'select'] if initialized else ['create', 'select']) if default else (['update'] if initialized else ['create']),
+                'selection_scope': 'default' if default else 'pinned'}
+
+    def _require_setup_snapshot(self, payload):
+        expected = payload.get('expected_workspace')
+        if (not isinstance(expected, dict) or expected.get('data_path') != str(self.server.data_path)
+                or expected.get('revision') != self.server.workspace_id):
+            raise onboarding.SetupConflict('The active workspace changed. Reload setup before applying this choice.')
+        if payload.get('expected_settings_revision') != onboarding.settings_revision(self.server.data_path):
+            raise onboarding.SetupConflict('The active workspace settings changed. Reload setup before applying this choice.', 'settings_changed')
+
+    def _setup_overview(self):
+        # Config writers replace atomically. Pair displayed choices with the
+        # exact revision the user reviewed, without creating a lock on GET.
+        for _ in range(3):
+            before = onboarding.settings_revision(self.server.data_path)
+            result = onboarding.choices(self.server.data_path)
+            metadata = self._setup_metadata()
+            if metadata['settings_revision'] == before:
+                return self._json({**result, **metadata})
+        raise onboarding.SetupConflict('Workspace settings are changing. Reload setup before continuing.', 'settings_changed')
+
+    def _inspect_setup(self, payload):
+        if set(payload) - {'data_path', 'expected_workspace', 'expected_settings_revision'}:
+            raise core.MnemosError('Inspect accepts only the selected folder and the current workspace revision.')
+        self._require_setup_snapshot(payload)
+        target = onboarding.data_directory(payload.get('data_path'))
+        before = onboarding.settings_revision(target)
+        target, config = onboarding.validate_target(target)
+        if config is None:
+            raise core.MnemosError('This folder is not an initialized Mnemos workspace. Choose create to initialize a new folder.')
+        result = onboarding.choices(target, config)
+        if before != onboarding.settings_revision(target):
+            raise onboarding.SetupConflict('The selected workspace settings changed during inspection. Inspect it again.', 'settings_changed')
+        result['settings_revision'] = before
+        return self._json({'workspace': result, **self._setup_metadata()})
+
+    def _apply_setup(self, payload):
+        if not self.server.setup_lock.acquire(blocking=False):
+            raise core.MnemosError('Another setup request is running. Wait for it to finish.', 409)
+        try:
+            pointer = self.server.installation_file
+            # Serialize competing default servers before checking or changing their pointer.
+            with core.storage_lock(pointer.parent) if pointer else nullcontext():
+                self.server.assert_selection_current()
+                with core.storage_lock(self.server.data_path):
+                    self._require_setup_snapshot(payload)
+                    mode = payload.get('mode')
+                    if mode not in self._setup_metadata()['setup_modes']:
+                        raise core.MnemosError('This launch is pinned to a workspace. Use the default launcher to create or select another default workspace.' if not pointer else 'Choose update, create, or select explicitly.')
+                    if not pointer and payload.get('data_path', str(self.server.data_path)) != str(self.server.data_path):
+                        raise core.MnemosError('This launch is pinned to its data folder. Use the default launcher to select another workspace.')
+                    choices = {key: value for key, value in payload.items() if key not in {'expected_workspace', 'expected_settings_revision'}}
+                    previous = self.server.active_workspace()
+                    was_initialized = (self.server.data_path / 'config.json').exists()
+                    selected, result = onboarding.configure(self.server.data_path, choices)
+                    switched = selected != self.server.data_path or not was_initialized
+                    revision = uuid.uuid4().hex if switched else self.server.workspace_id
+                    if pointer and switched:
+                        try:
+                            onboarding.save_selection(pointer, selected, revision)
+                        except (OSError, ValueError) as exc:
+                            raise core.MnemosError('Could not save the default workspace selection. The previous workspace remains active; a new folder may have been initialized.', 500) from exc
+                        self.server.selection_fingerprint = onboarding.selection_fingerprint(pointer)
+                    # No request can cross this activation: _handle holds workspace_lock.
+                    self.server.data_path = selected
+                    self.server.workspace_id = revision
+                    if switched:
+                        with self.server.session_lock:
+                            self.server.sessions.clear()
+                            self.server.login_failures.clear()
+                        result['warnings'].append('Connections that explicitly specify a folder keep using that folder. Reconfigure them separately if you want them to use this workspace.')
+                    result.update(self._setup_metadata(), mode=mode, previous_workspace=previous)
+                    return self._json(result)
+        finally:
+            self.server.setup_lock.release()
+
     def _dispatch(self, method):
         self._guard(method == "POST")
+        self.server.assert_selection_current()
         parsed = urlsplit(self.path)
         path = unquote(parsed.path)
-        if path in {'/api/setup', '/setup.html'}:
+        if path in {'/api/setup', '/api/setup/inspect', '/setup.html'}:
             self._require_local_setup()
+        self._workspace_guard(method, parsed)
+        # Hold the pointer lock through every mutation, so a competing default
+        # server cannot activate another workspace between our check and write.
+        if method == 'POST' and path != '/api/setup/inspect' and self.server.installation_file:
+            with core.storage_lock(self.server.installation_file.parent):
+                self.server.assert_selection_current()
+                return self._dispatch_routes(method, parsed, path)
+        return self._dispatch_routes(method, parsed, path)
+
+    def _dispatch_routes(self, method, parsed, path):
+        if path == '/api/setup/inspect' and method == 'POST':
+            return self._inspect_setup(self._body())
         if path == '/api/setup':
-            from . import onboarding
             if method == 'GET':
-                return self._json(onboarding.choices(self.server.data_path))
+                return self._setup_overview()
             if method == 'POST':
-                payload = self._body()
-                if not self.server.setup_lock.acquire(blocking=False):
-                    raise core.MnemosError('Another setup request is running. Wait for it to finish.', 409)
-                try:
-                    selected, result = onboarding.configure(self.server.data_path, payload)
-                    if self.server.installation_file:
-                        onboarding.save_selection(self.server.installation_file, selected)
-                    # Switch only after validated settings and the launch selection are saved.
-                    self.server.data_path = selected
-                    with self.server.session_lock:
-                        self.server.sessions.clear()
-                        self.server.login_failures.clear()
-                    return self._json(result)
-                finally:
-                    self.server.setup_lock.release()
+                return self._apply_setup(self._body())
         initialized = (self.server.data_path / 'config.json').exists()
         if not initialized:
             if path.startswith('/api/'):
-                return self._json({'initialized': False, 'setup_required': True, 'setup_url': '/setup.html'}, 409)
+                return self._json({'initialized': False, 'setup_required': True, 'setup_url': '/setup.html',
+                                   'workspace_id': self.server.workspace_id}, 409)
             if path == '/':
                 path = '/setup.html'
             # Static setup assets can load without reading a nonexistent config.
@@ -194,6 +309,8 @@ class Handler(BaseHTTPRequestHandler):
                                "documents": core.list_documents(data, role),
                                "workflows": core.list_workflows(data, role) if role != "anonymous" else [],
                                "settings": core.public_settings(data, role),
+                               "workspace_id": self.server.workspace_id,
+                               "active_workspace": self.server.active_workspace(self.server.setup_enabled and role == 'owner'),
                                "setup_available": self.server.setup_enabled and self.server.local_owner and role == 'owner'})
         if method == "POST" and path == "/api/login":
             payload = self._body()
@@ -299,9 +416,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self, method):
         try:
-            self._dispatch(method)
+            with self.server.workspace_lock:
+                self._dispatch(method)
         except core.MnemosError as exc:
-            self._json({"error": str(exc)}, exc.status)
+            payload = {"error": str(exc)}
+            if isinstance(exc, onboarding.SetupConflict):
+                payload.update(code=exc.code, reload_required=True, restart_required=exc.restart_required)
+            self._json(payload, exc.status)
         except ValueError as exc:
             self._json({"error": str(exc)}, 400)
         except (BrokenPipeError, ConnectionResetError):
@@ -319,8 +440,8 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "Cross-origin access is not enabled."}, 405)
 
 
-def serve(data_path, host="127.0.0.1", port=4318, public_hosts=(), require_auth=False):
-    server = MnemosServer((host, port), data_path, public_hosts, require_auth=require_auth)
+def serve(data_path, host="127.0.0.1", port=4318, public_hosts=(), require_auth=False, installation_file=None):
+    server = MnemosServer((host, port), data_path, public_hosts, require_auth=require_auth, installation_file=installation_file)
     print(f"Mnemos is running at http://{host}:{server.server_address[1]}", flush=True)
     print("Press Ctrl+C to stop. Network access requires tokens and a TLS reverse proxy.", flush=True)
     try:

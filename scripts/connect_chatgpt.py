@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from mnemos.core import load_config
+from mnemos.installation import resolve_data
 
 TUNNEL_ID = re.compile(r'tunnel_(?:[a-z0-9]{4}_)?[a-z0-9]{32}\Z')
 PROFILE = 'keystone'  # Stable runtime profile identity across the product rename.
@@ -234,15 +235,16 @@ def status(data):
     return result
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['prepare', 'doctor', 'run', 'connect', 'status'])
-    parser.add_argument('--data', type=Path, default=ROOT / 'data')
+    parser.add_argument('--data', type=Path, help='Pin a prepared installation; omitted uses the selected default. Existing profiles are never retargeted.')
     parser.add_argument('--binary', default=os.environ.get('MNEMOS_TUNNEL_CLIENT') or os.environ.get('KEYSTONE_TUNNEL_CLIENT'),
                         help='Official executable; defaults to data/tools/tunnel-client or PATH.')
     parser.add_argument('--tunnel-id', help='Nonsecret tunnel ID; required for prepare.')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
+        args.data = resolve_data(args.data)
         if args.action == 'status':
             result = status(args.data)
         else:

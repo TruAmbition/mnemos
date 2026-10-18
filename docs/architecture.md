@@ -62,6 +62,8 @@ Local MCP exposes search, document reads, draft capture, recall, and workflow pl
 
 ## Guided setup and portable handoff
 
+One saved selection at the checkout's `data/installation.json` defines the active default. Omitted `--data` arguments in the CLI, backup/export helpers, and new assistant installers use that selection. Explicit paths and previously installed assistant connections remain pinned; switching defaults does not move notes or retarget connected clients. A default-following MCP process closes before handling a request after the selection changes, requiring a restart; pinned MCP processes continue with their authorized workspace.
+
 The launcher serves local `/setup.html` for choosing the author, dedicated data folder, backup destination, Obsidian setup, and assistant mode. It reports actual local readiness separately from any external connection status. It does not automatically install credentials or connect cloud accounts.
 
 Cloud handoff exports bounded recall excerpts and source metadata. Full source bodies are optional and explicitly selected, with a separate size limit. The user chooses what to upload. The `mnemos-handoff` skill turns those supplied sources and accessible task evidence into a single new draft capture JSON. Portal import previews it and creates a new draft; it does not overwrite an existing document. Source-only skill export needs no initialized vault and never packages private runtime data.

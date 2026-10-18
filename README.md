@@ -27,13 +27,17 @@ Keep the launch terminal open while using the portal; Ctrl+C stops it. Open [loc
 
 ```sh
 python3 scripts/setup.py
-python3 scripts/install_agents.py --data ./data --client both
-python3 -m mnemos serve --data ./data
+python3 scripts/install_agents.py --client both
+python3 -m mnemos serve
 ```
 
 On Windows, use `py -3` in place of `python3` if that is your Python launcher. Open [the local library](http://127.0.0.1:4318).
 
-Setup creates a dedicated `vault` inside your chosen data folder (`./data` by default). It checks for Obsidian and lets you request installation if it is missing. The optional terminal setup also asks for your author name and backup choice. It prefers Homebrew on macOS, winget on Windows, or Flatpak on Linux. When no supported package manager is available, it uses an official release download: DMG on macOS, EXE on Windows, or AppImage on Linux. If installation fails, it explains the result and points to the [official Obsidian download](https://obsidian.md/download). It does not silently report a failed install as complete.
+Each checkout has **one active default workspace**. Reopen setup to update it, create a separate workspace, or select an existing initialized one. Applying a different workspace changes the default recorded in `data/installation.json`; it preserves the previous workspace's files, notes, and credentials. It does not copy or merge libraries. Commands without `--data` use this selected default, independent of the terminal's current directory; before any selection, they use this checkout's `data/` folder.
+
+An explicit `--data /absolute/path/to/private-data` pins that command to the supplied workspace and stays outside default switching. Installed Codex, Claude, and tunnel connections also contain explicit paths: changing the default does **not** move, retarget, or disconnect them. Review a connection's intended workspace separately. A manually configured MCP server without `--data` stops accepting calls after the default changes and must be restarted. See [connection scope](docs/assistant-connections.md#workspace-selection-and-pinned-connections).
+
+Setup creates a dedicated `vault` inside your chosen data folder (`data/` in this checkout by default). It checks for Obsidian and lets you request installation if it is missing. The optional terminal setup also asks for your author name and backup choice. It prefers Homebrew on macOS, winget on Windows, or Flatpak on Linux. When no supported package manager is available, it uses an official release download: DMG on macOS, EXE on Windows, or AppImage on Linux. If installation fails, it explains the result and points to the [official Obsidian download](https://obsidian.md/download). It does not silently report a failed install as complete.
 
 The assistant setup step adds project-scoped connections and skills for Codex and Claude Code. Use `--client codex` or `--client claude` to select one, or omit that step for browser-only use. Reopen the project and accept its normal trust prompts in the chosen client. Existing unrelated settings are preserved; conflicting Mnemos entries are reported instead of overwritten.
 
@@ -42,7 +46,7 @@ Open the `vault` inside your selected data folder in Obsidian using **Open folde
 For a server that does not need the Obsidian desktop app:
 
 ```sh
-python3 scripts/setup.py --data ./data --author "Your name" --skip-obsidian
+python3 scripts/setup.py --author "Your name" --skip-obsidian
 ```
 
 Keep your private library out of the public source repository. The default `data/`, `backups/`, and `exports/` directories are ignored by Git. If you choose a custom location inside the repository, add that location to `.gitignore` before committing. A private data directory outside the source checkout is also supported.
@@ -60,10 +64,10 @@ For a handoff between ChatGPT, Claude, and Codex:
 An authorized local MCP client can save directly, and an assistant with actual access to the installation can use the CLI. For cloud chats, the [Cloud handoff page](docs/cloud-handoff.md) exports selected context and accepts a reviewed draft JSON when you return. No tunnel is needed for local clients or this file workflow:
 
 ```sh
-python3 -m mnemos capture --data ./data --file /path/to/capture.json
-python3 -m mnemos search --data ./data "deployment"
-python3 -m mnemos get --data ./data --id document-id
-python3 -m mnemos recall --data ./data "deployment" --budget 6000
+python3 -m mnemos capture --file /path/to/capture.json
+python3 -m mnemos search "deployment"
+python3 -m mnemos get --id document-id
+python3 -m mnemos recall "deployment" --budget 6000
 ```
 
 See the [capture format](skills/mnemos-capture/references/capture-format.md). Existing-document updates require their current revision. Recall returns a bounded context bundle with source IDs and revisions; the budget is characters, not tokens. The token estimate is approximate. Search and recall currently use keywords.
@@ -88,7 +92,7 @@ The bundled skills live in `skills/`:
 | `mnemos-orchestrate` | Build source-backed dependency plans and bounded microtasks. |
 | `mnemos-build-skill` | Turn established knowledge into a scoped, reusable assistant skill. |
 
-Use `python3 scripts/install_agents.py --data ./data --client both` to configure this checkout, or add `--project /absolute/path/to/working-project` to configure another chosen workspace. The installer creates project-local settings and copies skills; it does not change global client settings. For manual Codex discovery, copy selected skill folders into the project's `.agents/skills/` directory, preserving existing skills. [Official skill discovery guidance](https://learn.chatgpt.com/docs/build-skills)
+Use `python3 scripts/install_agents.py --client both` to configure this checkout, or add `--project /absolute/path/to/working-project` to configure another chosen workspace. The installer creates project-local settings and copies skills; it does not change global client settings. For manual Codex discovery, copy selected skill folders into the project's `.agents/skills/` directory, preserving existing skills. [Official skill discovery guidance](https://learn.chatgpt.com/docs/build-skills)
 
 To install only portable skills, without initializing a vault or adding MCP settings, run:
 
@@ -111,8 +115,8 @@ A local MCP client starts that process and communicates over standard input/outp
 The default loopback server treats local access as the owner. For a shared computer, use `--require-auth` and an owner token. Create credentials from the host:
 
 ```sh
-python3 -m mnemos token --data ./data --role reader --author "Engineer name"
-python3 -m mnemos token --data ./data --role author --author "Contributing engineer"
+python3 -m mnemos token --role reader --author "Engineer name"
+python3 -m mnemos token --role author --author "Contributing engineer"
 ```
 
 Give each person their own credential through an appropriate private channel. Tokens are shown when created; keep them out of source control and documentation. Author credentials can contribute drafts. The owner reviews and verifies content before readers can see it. Updates reject stale revisions instead of silently replacing a newer edit.
@@ -132,7 +136,7 @@ Replace the illustrative hostname with your actual hostname, preserve the incomi
 Choose local storage or a preconfigured rclone remote in setup or the owner's storage settings. For cloud backup, install rclone and configure the desired provider separately. Use an rclone crypt remote when client-side encryption is required; the local snapshot itself is not encrypted.
 
 ```sh
-python3 scripts/backup.py --data ./data
+python3 scripts/backup.py
 python3 scripts/restore.py /path/to/mnemos-snapshot.zip --to /path/to/empty-recovered-vault
 ```
 
@@ -141,7 +145,7 @@ Backups contain vault files and a checksum manifest. They do not contain install
 An optional static website can be generated from verified documentation:
 
 ```sh
-python3 scripts/export_reader.py --data ./data --out ./exports/reader
+python3 scripts/export_reader.py --out ./exports/reader
 ```
 
 The export is unencrypted and has no application login. Host it only where the audience is authorized to read every included document. **Do not publish private documentation to public GitHub Pages.** The toolkit source may be public while the runtime library stays private.
@@ -151,7 +155,7 @@ The export is unencrypted and has no application login. Host it only where the a
 The example workflow demonstrates evidence review, draft capture, and verification:
 
 ```sh
-python3 -m mnemos workflow-plan --data ./data --id first-capture
+python3 -m mnemos workflow-plan --id first-capture
 ```
 
 A workflow references source documents, declares dependencies, and marks approval checkpoints. The planner checks missing sources, missing dependencies, and cycles. It returns an ordered plan with source revisions. **It does not execute the tasks.** The orchestration skill guides an assistant through separately authorized work with evidence and stop conditions.

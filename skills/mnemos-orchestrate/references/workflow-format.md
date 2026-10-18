@@ -31,8 +31,10 @@ Replace illustrative IDs with real source documents. Each dependency names a ste
 
 Validate and obtain a plan from the source directory:
 
+This command uses the checkout's selected default workspace. Add an explicit `--data` path only to pin a different intended, authorized workspace.
+
 ```sh
-python3 -m mnemos workflow-plan --data ./data --id example-procedure
+python3 -m mnemos workflow-plan --id example-procedure
 ```
 
 The planner resolves source documents and checks graph validity. Retain returned source revisions when recording the plan. Revalidate against current documents before execution. The CLI does not schedule, run, or roll back the tasks.

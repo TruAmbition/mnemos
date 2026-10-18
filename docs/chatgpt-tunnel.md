@@ -36,9 +36,11 @@ python3 scripts/connect_chatgpt.py prepare \
   --tunnel-id tunnel_REPLACE_WITH_THE_ID_FROM_PLATFORM
 ```
 
-This runs a local, read-only MCP discovery check and writes an isolated profile into `data/connections/chatgpt`. It creates no tunnel, adds no ChatGPT plugin, makes no external connection, and stores no credential. Existing different or edited profiles are preserved with an error. Add `--data /absolute/path/to/mnemos-data` to every command if your installation uses another data directory.
+This uses the workspace selected in setup, runs a local, read-only MCP discovery check, and writes an isolated profile into that workspace's `connections/chatgpt` folder. It creates no tunnel, adds no ChatGPT plugin, makes no external connection, and stores no credential. Existing different or edited profiles are preserved with an error. Add `--data /absolute/path/to/mnemos-data` to pin every command to the workspace whose connection you intend to manage.
 
-For the simplest Mac startup, put the verified executable at `data/tools/tunnel-client`, then double-click **start-chatgpt.command**. It opens Terminal, asks for the runtime key once through hidden input, checks connectivity, and keeps the tunnel running. The executable is private runtime data and is not included in the toolkit's source export. Alternatively, install the client on your PATH or point `MNEMOS_TUNNEL_CLIENT` at its location.
+Prepared profiles contain an explicit vault path. Changing the active default does not retarget an existing or running tunnel. Commands without `--data` inspect only the newly selected workspace; they fail if it has no intact prepared profile. To manage an older connection, use its explicit data path. Do not prepare a replacement against another library merely to clear that error.
+
+For the simplest Mac startup, put the verified executable at `tools/tunnel-client` inside the selected workspace, then double-click **start-chatgpt.command**. It opens Terminal, asks for the runtime key once through hidden input, checks connectivity, and keeps the tunnel running. The executable is private runtime data and is not included in the toolkit's source export. Alternatively, install the client on your PATH or point `MNEMOS_TUNNEL_CLIENT` at its location.
 
 The equivalent one-prompt terminal command is:
 

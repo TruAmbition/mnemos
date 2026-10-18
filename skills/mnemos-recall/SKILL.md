@@ -12,8 +12,10 @@ Find the smallest useful source-backed context bundle for the current task. Use 
 Identify the project, component, error, or previous task from the user's request. Call `recall_context(query, budget)` when available. With filesystem access, run from the source directory:
 
 ```sh
-python3 -m mnemos recall --data ./data "project component" --budget 6000
+python3 -m mnemos recall "project component" --budget 6000
 ```
+
+The CLI example follows the workspace currently selected in this Mnemos checkout. Add `--data /absolute/path/to/private-data` only when that specific workspace is intended and authorized. A connected MCP client may be pinned to a different workspace; default changes do not retarget existing connections. If a default-following MCP connection reports a workspace change, restart it rather than bypassing the check.
 
 The budget is characters, not model tokens; the default is 6,000 characters. A reported token estimate is only a rough characters-divided-by-four estimate. Current retrieval uses keywords. If the query is too broad or returns no useful matches, try a more specific term or a separate synonym search; do not claim semantic matching.
 

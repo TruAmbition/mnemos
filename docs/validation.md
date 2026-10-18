@@ -4,11 +4,13 @@ Validated on October 17, 2026, on macOS. This record distinguishes automated tes
 
 ## Automated checks
 
-The Python suite passed 88 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.
+The Python suite passed 109 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.
 
-The JavaScript helper suite passed 24 tests covering Markdown rendering and unsafe-link rejection, JSON and Markdown imports, draft enforcement, preservation of source references, dates, keyword relevance, and static recall budgets. Run it with `node --test tests/web.test.cjs`; Node is only needed for these development tests, not for running Mnemos.
+The JavaScript helper suite passed 36 tests covering Markdown rendering and unsafe-link rejection, JSON and Markdown imports, draft enforcement, preservation of source references, dates, keyword relevance, static recall budgets, setup flows, and stale-workspace recovery. Run it with `node --test tests/web.test.cjs`; Node is only needed for these development tests, not for running Mnemos.
 
 The added checks cover fresh browser setup, isolated storage validation, custom-location persistence, preservation of documents and tokens, local-owner-only setup, Windows command quoting, source selection, bounded context packs, skill archive contents, skills-only installs, legacy connection compatibility, generated Obsidian links, and safe new-draft import even from an existing editor. All five skills passed the skill-creator validator.
+
+Workspace lifecycle checks cover explicit update/create/select modes, default persistence across restart and configuration edits, read-only inspection, preservation of selected workspace settings, stale browser saves and downloads, stale configuration previews, activation failure, competing servers, in-flight writes, and default CLI/MCP resolution. Existing explicitly pinned assistant and tunnel connections remain on their configured paths.
 
 The MCP capture test exercises draft-only capture and subsequent recall. A separate skill exercise saved a searchable handoff that distinguished a source-reported successful test from a staging deployment that was proposed but not performed. It retained unknowns and removed the supplied credential placeholder.
 
@@ -17,6 +19,8 @@ The ChatGPT Actions schema parses as JSON, resolves its local schema references,
 ## Live checks
 
 For version 0.2, the local browser completed all four setup steps in an isolated test installation, selected cloud file handoff, and opened the resulting library. The source picker started with no selection. A downloaded JSON pack contained exactly the selected source with its full text and revision. The existing ChatGPT app display name was changed to Mnemos. Claude Desktop’s equivalent legacy connection was renamed with a backup and a real stdio tool-discovery preflight; Claude was not restarted during the rename. The repository directory and tunnel identity remain unchanged to preserve configured paths.
+
+The repeatable setup flow was also checked in an isolated browser installation: create a new default through all four steps, inspect and activate a second existing workspace, and verify that both previous libraries retain their own settings and notes. A draft open in an older tab was rejected after activation; reloading opened the active library while retaining a downloadable copy of the draft. Independent file checks confirmed that the rejected draft was not saved into either workspace. The configured-workspace overview was inspected at desktop and narrow-panel sizes. The user's running portal was refreshed without switching its workspace or changing its assistant connections.
 
 The following underlying installation and connection checks were completed during version 0.1, before the rename:
 

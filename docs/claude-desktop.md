@@ -7,11 +7,13 @@ Claude Desktop can launch Mnemos's local connector and read or save your selecte
 Run these commands from the Mnemos project folder with the same Python 3.11+ interpreter used to run Mnemos:
 
 ```sh
-python3 scripts/install_claude_desktop.py --data ./data
-python3 scripts/install_claude_desktop.py --data ./data --apply
+python3 scripts/install_claude_desktop.py
+python3 scripts/install_claude_desktop.py --apply
 ```
 
 The first command checks the connection without changing Claude settings. The second saves it. The installer starts the real MCP process and checks its advertised tools before writing anything. It preserves unrelated settings and servers, creates a private timestamped backup beside an existing config, and refuses to replace a different connection already called `mnemos` or `keystone`. An equivalent legacy `keystone` entry is renamed to `mnemos` only with `--apply`; the preflight shows the pending migration without changing files. Client-specific settings on the matching entry and unrelated settings are preserved.
+
+Without `--data`, the installer uses the workspace currently selected in Mnemos setup and pins its absolute path into Claude's configuration. Add `--data /absolute/path/to/private-data` to choose a particular authorized workspace instead. Later default-workspace changes do not retarget an installed Claude connection; a conflicting connection is left unchanged. See [workspace selection](assistant-connections.md#workspace-selection-and-pinned-connections).
 
 It uses the standard config location on macOS and Windows. If your installation uses a different location, find it in Claude's Developer settings and pass `--config /absolute/path/to/claude_desktop_config.json`. Absolute paths for Python, the connector, and the vault are written into the configuration. The installer never quits or restarts Claude.
 

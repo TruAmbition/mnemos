@@ -7,15 +7,15 @@ import sys
 from pathlib import Path
 
 from . import core
+from .installation import resolve_data
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    default_data = str(Path.cwd() / "data")
     for command in ("init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
-        sub.add_argument("--data", default=default_data, help="Dedicated Mnemos data folder (default: ./data)")
+        sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
         if command == "init":
             sub.add_argument("--author", default="Local engineer")
         elif command == "serve":
@@ -42,12 +42,16 @@ def main(argv=None) -> int:
             sub.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
+        uses_default = args.data is None
+        if args.command != "skills-export":
+            args.data = resolve_data(args.data)
         if args.command == "init":
             config = core.initialize(args.data, args.author)
             result = {"vault_path": str(core.vault_path(args.data)), "owner": config["owner"], "initialized": True}
         elif args.command == "serve":
             from .server import serve
-            serve(args.data, args.host, args.port, args.public_host, args.require_auth)
+            serve(args.data, args.host, args.port, args.public_host, args.require_auth,
+                  installation_file=core.ROOT / "data" / "installation.json" if uses_default else None)
             return 0
         elif args.command == "capture":
             payload = json.loads(sys.stdin.read() if args.file == "-" else Path(args.file).read_text("utf-8"))

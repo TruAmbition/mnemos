@@ -29,10 +29,10 @@ From an installation you can actually access:
 ```sh
 python3 -m mnemos handoff "deployment recovery" --budget 6000 --output context-pack.json
 python3 -m mnemos skills-export --output mnemos-skills.zip
-python3 -m mnemos capture --data ./data --file /path/to/returned-draft.json
+python3 -m mnemos capture --file /path/to/returned-draft.json
 ```
 
-Add `--data /absolute/path/to/private-data` to `handoff` for a custom vault. Repeat `--id actual-source-id` to explicitly include full selected source documents. The bounded preview is measured in characters. Full selected source content has a separate 200 KB limit. Skill export does not require an initialized vault because it packages only the bundled source skills.
+These commands use the workspace selected in setup. Add `--data /absolute/path/to/private-data` to pin `handoff` or `capture` to a specific authorized workspace. Confirm that an import belongs to the intended library if the default changed after export. Repeat `--id actual-source-id` to explicitly include full selected source documents. The bounded preview is measured in characters. Full selected source content has a separate 200 KB limit. Skill export does not require an initialized vault because it packages only the bundled source skills.
 
 The local HTTP equivalents are `GET /api/handoff?query=...&budget=...` with optional repeated `id` parameters, and `GET /api/skills/export`. They do not upload material to an AI provider. The existing capture interface accepts one reviewed document, not a context-pack wrapper or an array of documents.
 

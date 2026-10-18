@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -173,7 +173,7 @@ const setupSource = fs.readFileSync(path.join(__dirname,'..','web','setup.js'),'
 assert.match(setupSource, startup, 'Update the helper harness if setup startup changes.');
 const setupContext = {document:{addEventListener(){}},window:{addEventListener(){}},setTimeout,clearTimeout};
 vm.createContext(setupContext);
-vm.runInContext(setupSource.replace(startup, '  globalThis.helpers={defaults,payloadFor,relocateDefaultBackup};\n})();'), setupContext);
+vm.runInContext(setupSource.replace(startup, '  globalThis.helpers={defaults,payloadFor,relocateDefaultBackup,planSetupFlow,setupSubmission,allowedFlows};\n})();'), setupContext);
 const setup = setupContext.helpers;
 
 test('First-run setup defaults to local assistant and a dedicated backup destination', () => {
@@ -308,4 +308,137 @@ test('Pasted malformed JSON leaves the current editor intact and reports the err
   assert.equal(app.renders(),0);
   assert.equal(app.saves(),0);
   assert.match(app.element('#paste-error').innerHTML,/notice error/);
+});
+
+const activeSetup = () => ({initialized:true,data_path:'/workspaces/old',author:'Previous author',backup:{provider:'rclone',destination:'/old-cache',remote:'cloud:old'},assistant_mode:'connected',obsidian:{installed:true},active_workspace:{data_path:'/workspaces/old',revision:'pointer-1'},workspace_id:'workspace-1',settings_revision:'settings-1',setup_modes:['update','create','select'],selection_scope:'default'});
+
+test('Creating a new default starts fresh without mutating the active setup', () => {
+  const original=activeSetup();const before=plain(original);
+  const flow=plain(setup.planSetupFlow(original,'create'));
+  assert.equal(flow.screen,'wizard');assert.equal(flow.step,0);
+  assert.deepEqual(flow.values,{data_path:'',author:'Local engineer',backup:{provider:'local',destination:'',remote:''},assistant_mode:'local',install_obsidian:false});
+  flow.values.data_path='/workspaces/new';flow.values.backup.destination='/workspaces/new/backups';
+  assert.deepEqual(original,before);
+});
+
+test('Updating a setup copies its choices while retaining its dedicated folder', () => {
+  const original=activeSetup();const flow=setup.planSetupFlow(original,'update');
+  assert.equal(flow.values.data_path,original.data_path);
+  assert.deepEqual(plain(flow.values.backup),original.backup);
+  flow.values.backup.remote='cloud:changed';
+  assert.equal(original.backup.remote,'cloud:old');
+  const payload=plain(setup.setupSubmission(original,'update',flow.values));
+  assert.deepEqual(payload.expected_workspace,original.active_workspace);
+  assert.equal(payload.expected_settings_revision,'settings-1');
+  assert.equal(payload.data_path,'/workspaces/old');
+});
+
+test('Selecting an existing workspace sends only identity and revision guards', () => {
+  const active=activeSetup();
+  const target={data_path:'/workspaces/existing',author:'Target author',backup:{provider:'local',destination:'/target-backups'},assistant_mode:'handoff',settings_revision:'target-settings-7'};
+  const result=plain(setup.setupSubmission(active,'select',target,target));
+  assert.deepEqual(result,{mode:'select',data_path:'/workspaces/existing',expected_workspace:{data_path:'/workspaces/old',revision:'pointer-1'},expected_settings_revision:'settings-1',expected_target_settings_revision:'target-settings-7'});
+});
+
+test('Pinned servers permit only their advertised modes and keep the fresh fixed folder', () => {
+  assert.deepEqual(plain(setup.allowedFlows({...activeSetup(),setup_modes:['update'],selection_scope:'pinned'})),['update']);
+  const fresh={initialized:false,selection_scope:'pinned',setup_modes:['create'],data_path:'/fixed-folder',backup:{provider:'local',destination:'/fixed-folder/backups'}};
+  assert.deepEqual(plain(setup.allowedFlows(fresh)),['create']);
+  assert.equal(setup.planSetupFlow(fresh,'create').values.data_path,'/fixed-folder');
+});
+
+function workspaceSetupHarness(info, replies=[]) {
+  const elements=new Map();const calls=[];let renders=0;
+  const element=selector=>{if(!elements.has(selector))elements.set(selector,{value:'',innerHTML:'',hidden:false,disabled:false,focus(){},querySelectorAll(){return [];}});return elements.get(selector);};
+  const environment={document:{querySelector:element,addEventListener(){}},window:{addEventListener(){}},setTimeout(){return 1;},clearTimeout(){},FormData:class FormData{constructor(form){this.fields=form.fields||{};}get(name){return this.fields[name]??null;}},fetch:async(path,options)=>{calls.push({path,options,payload:options.body?JSON.parse(options.body):null});const reply=replies.shift();assert.ok(reply,'Unexpected network call');return {ok:reply.ok!==false,status:reply.status||200,json:async()=>reply.body};}};
+  vm.createContext(environment);
+  vm.runInContext(setupSource.replace(startup,'  globalThis.flowHarness={state,beginFlow,overview,collect,inspectExisting,applySetup,request,replaceRender(fn){render=fn;}};\n})();'),environment);
+  const handler=environment.flowHarness;handler.state.info=info;handler.replaceRender(()=>{renders++;});
+  return {handler,element,calls,renders:()=>renders};
+}
+
+test('Starting and cancelling a new setup leaves the active configuration untouched and sends no request', () => {
+  const info=activeSetup();const snapshot=plain(info);const app=workspaceSetupHarness(info);
+  app.handler.beginFlow('create');assert.equal(app.handler.state.screen,'wizard');
+  app.element('#setup-form').fields={author:'Next author',data_path:'D:\\mnemos-next'};
+  app.handler.collect();
+  assert.equal(app.handler.state.values.backup.destination,'D:\\mnemos-next\\backups');
+  app.handler.overview();assert.equal(app.handler.state.screen,'overview');
+  assert.equal(app.handler.state.values,null);assert.equal(app.calls.length,0);assert.deepEqual(info,snapshot);
+});
+
+test('Cancelling existing-workspace selection during first run returns to a valid fresh form', () => {
+  const info={initialized:false,data_path:'/fresh',setup_modes:['create','select'],backup:{provider:'local',destination:'/fresh/backups'}};
+  const app=workspaceSetupHarness(info);app.handler.beginFlow('select');
+  assert.equal(app.handler.state.values,null);app.handler.overview();
+  assert.equal(app.handler.state.screen,'wizard');assert.equal(app.handler.state.flowMode,'create');
+  assert.equal(app.handler.state.values.data_path,'/fresh');assert.equal(app.calls.length,0);
+});
+
+test('Inspect reads the target settings; Apply sends both target and active guards without copying settings', async () => {
+  const info=activeSetup();const target={data_path:'/existing',author:'Existing author',backup:{provider:'local',destination:'/existing-backups'},assistant_mode:'handoff',settings_revision:'target-9'};
+  const applied={...target,initialized:true,workspace_id:'workspace-2',active_workspace:{data_path:'/existing',revision:'pointer-2'}};
+  const app=workspaceSetupHarness(info,[{body:{workspace:target}},{body:applied}]);
+  app.handler.beginFlow('select');app.element('#existing-folder').value='/existing';
+  await app.handler.inspectExisting({preventDefault(){},currentTarget:{reportValidity(){return true;},querySelector(){return {disabled:false};}}});
+  assert.equal(app.calls[0].path,'/api/setup/inspect');assert.equal(app.calls[0].options.headers['X-Mnemos-Workspace'],'workspace-1');
+  assert.deepEqual(app.calls[0].payload,{data_path:'/existing',expected_workspace:{data_path:'/workspaces/old',revision:'pointer-1'},expected_settings_revision:'settings-1'});
+  assert.equal(app.handler.state.info,info);assert.equal(app.handler.state.inspected.author,'Existing author');
+  await app.handler.applySetup();
+  assert.deepEqual(app.calls[1].payload,{mode:'select',data_path:'/existing',expected_workspace:{data_path:'/workspaces/old',revision:'pointer-1'},expected_settings_revision:'settings-1',expected_target_settings_revision:'target-9'});
+  assert.equal(app.handler.state.info.workspace_id,'workspace-2');
+  assert.equal(app.handler.state.previousPath,'/workspaces/old');assert.equal(app.handler.state.screen,'success');
+});
+
+test('Setup refresh intentionally omits the stale workspace header while mutations retain it', async () => {
+  const app=workspaceSetupHarness(activeSetup(),[{body:{initialized:true}},{body:{status:'ready'}}]);
+  await app.handler.request();await app.handler.request('POST',{mode:'update'});
+  assert.equal(app.calls[0].options.headers['X-Mnemos-Workspace'],undefined);
+  assert.equal(app.calls[1].options.headers['X-Mnemos-Workspace'],'workspace-1');
+});
+
+test('Vault download URLs keep the originating workspace and encode its identifier', () => {
+  assert.equal(h.workspaceDownloadURL('/api/export','old workspace&1'),'/api/export?workspace=old%20workspace%261');
+  assert.equal(h.workspaceDownloadURL('/api/export?format=zip','old'),'/api/export?format=zip&workspace=old');
+  assert.equal(h.workspaceDownloadURL('/api/export',''),'/api/export');
+});
+
+function workspaceAppHarness(reply) {
+  const calls=[];const storage=new Map();let notices=0;
+  const form={fields:{id:'existing-doc',revision:'old-revision',title:'Unsaved result',type:'context',body:'Preserve this evidence.',status:'verified',tags:'one, two',sources:'source-1 revision abc\nhttps://example.com',related_ids:'source-1'}};
+  const element=selector=>selector==='#capture-form'?form:selector==='#workspace-notice'?null:selector==='#main'?{insertAdjacentHTML(){notices++;}}:registrationTarget;
+  const environment={document:{querySelector:element,addEventListener(){}},window:{MNEMOS_STATIC:true,addEventListener(){}},Intl,Date,setTimeout,clearTimeout,sessionStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},FormData:class FormData{constructor(value){this.form=value;}entries(){return Object.entries(this.form.fields);}},fetch:async(path,options)=>{calls.push({path,options});return {ok:reply.ok,status:reply.status||200,json:async()=>reply.body};}};
+  vm.createContext(environment);
+  vm.runInContext(source.replace(startup,'  globalThis.workspaceHarness={state,api,readRecovery,reloadActiveWorkspace,setDirty(value){dirty=value;}};\n})();'),environment);
+  const handler=environment.workspaceHarness;handler.state.data={workspace_id:'workspace-old',active_workspace:{data_path:'/old-vault'}};
+  return {handler,calls,storage,form,notices:()=>notices};
+}
+
+test('API requests guard writes and background reads; only bootstrap deliberately refreshes', async () => {
+  const app=workspaceAppHarness({ok:true,body:{ok:true}});
+  for(const route of ['/api/documents','/api/settings','/api/login','/api/logout'])await app.handler.api(route,{method:'POST',body:'{}'});
+  await app.handler.api('/api/backups');await app.handler.api('/api/recall?query=task');await app.handler.api('/api/bootstrap');
+  for(const call of app.calls.slice(0,-1))assert.equal(call.options.headers['X-Mnemos-Workspace'],'workspace-old');
+  assert.equal(app.calls.at(-1).options.headers['X-Mnemos-Workspace'],undefined);
+});
+
+test('A stale save retains the old workspace and preserves a separate recoverable draft', async () => {
+  const app=workspaceAppHarness({ok:false,status:409,body:{code:'workspace_changed',error:'The active workspace changed.',reload_required:true}});
+  app.handler.setDirty(true);
+  await assert.rejects(app.handler.api('/api/documents',{method:'POST',body:'{}'}),error=>error.code==='workspace_changed');
+  assert.equal(app.handler.state.workspaceStale,true);assert.equal(app.handler.state.data.workspace_id,'workspace-old');
+  const recovered=plain(app.handler.readRecovery());
+  assert.equal(recovered.workspace_path,'/old-vault');assert.equal(recovered.original_document_id,'existing-doc');
+  assert.equal(recovered.document.body,'Preserve this evidence.');assert.equal(recovered.document.status,'draft');
+  assert.deepEqual(recovered.document.tags,['one','two']);assert.deepEqual(recovered.document.related_ids,['source-1']);
+  assert.ok(!('id' in recovered.document));assert.ok(!('revision' in recovered.document));
+  assert.equal(app.form.fields.id,'existing-doc');assert.equal(app.calls.length,1);assert.equal(app.notices(),1);
+});
+
+test('Cross-process workspace changes retain the draft and do not enter a reload loop', async () => {
+  const app=workspaceAppHarness({ok:false,status:409,body:{code:'workspace_changed',error:'Restart the server.',reload_required:true,restart_required:true}});
+  app.handler.setDirty(true);
+  await assert.rejects(app.handler.api('/api/backups'),error=>error.restartRequired===true);
+  assert.equal(app.handler.state.workspaceRestart,true);await app.handler.reloadActiveWorkspace();
+  assert.equal(app.calls.length,1);assert.equal(app.handler.readRecovery().document.body,'Preserve this evidence.');
 });

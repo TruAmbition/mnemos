@@ -9,6 +9,9 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from mnemos.installation import resolve_data
+from mnemos.core import load_config
 
 
 def matching_connection(existing, expected):
@@ -50,11 +53,11 @@ def install_agents(project, data=None, clients='both', skills_only=False):
         raise ValueError('The project must be a directory.')
     connection = None
     if not skills_only:
-        if data is None:
-            raise ValueError('Supply --data for a local connection, or use --skills-only.')
-        data = Path(data).expanduser().resolve()
+        data = resolve_data(data)
         if not (data / 'config.json').is_file():
             raise ValueError('Initialize the Mnemos data directory first, or use --skills-only.')
+        load_config(data)
+        data = data.resolve()
         connection = {'command': str(Path(sys.executable).resolve()), 'args': [str(ROOT / 'scripts' / 'mcp_server.py'), '--data', str(data)]}
     prepared, destinations, connections = [], [], {}
     if clients in {'codex', 'both'}:
@@ -115,7 +118,7 @@ def install_agents(project, data=None, clients='both', skills_only=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', default=str(ROOT))
-    parser.add_argument('--data', help='Initialized local data directory; unnecessary with --skills-only.')
+    parser.add_argument('--data', help='Pin an initialized data directory; omitted uses the selected default. Unused with --skills-only.')
     parser.add_argument('--client', choices=['codex', 'claude', 'both'], default='both')
     parser.add_argument('--skills-only', action='store_true', help='Copy portable skills without reading or adding MCP settings or requiring a vault.')
     args = parser.parse_args()

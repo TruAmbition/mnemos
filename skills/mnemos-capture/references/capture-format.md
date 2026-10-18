@@ -2,10 +2,12 @@
 
 Use these commands only when the current assistant has authorized filesystem access to the intended installation. Otherwise return a single draft JSON object for the user to review and import; no tunnel is required. Run commands from the Mnemos source directory using Python 3.11 or later. Resolve the user's actual data directory before writing; `./data` below is an example.
 
+These examples use the checkout's selected default workspace. An explicit `--data /absolute/path/to/private-data` pins an authorized destination and bypasses default switching.
+
 ```sh
-python3 -m mnemos search --data ./data "deployment credentials"
-python3 -m mnemos get --data ./data --id existing-document-id
-python3 -m mnemos capture --data ./data --file ./work/capture.json
+python3 -m mnemos search "deployment credentials"
+python3 -m mnemos get --id existing-document-id
+python3 -m mnemos capture --file ./work/capture.json
 ```
 
 The JSON file contains one document. Use a private scratch directory for capture input; do not commit it with the toolkit source.

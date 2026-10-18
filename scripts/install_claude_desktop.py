@@ -20,6 +20,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from mnemos.core import load_config
+from mnemos.installation import resolve_data
 from scripts.install_agents import matching_connection
 
 
@@ -35,8 +36,9 @@ def default_config_path():
 
 
 def connection_for(data):
-    data = Path(data).expanduser().resolve()
+    data = resolve_data(data)
     load_config(data)
+    data = data.resolve()
     return {
         'command': str(Path(sys.executable).resolve()),
         'args': [str(ROOT / 'scripts/mcp_server.py'), '--data', str(data)],
@@ -72,7 +74,8 @@ def probe_connection(connection):
         raise ValueError('Mnemos MCP preflight failed; Claude settings were not changed.') from error
 
 
-def install_claude_desktop(data, config_path=None, apply=False):
+def install_claude_desktop(data=None, config_path=None, apply=False):
+    data = resolve_data(data)
     config_path = Path(config_path or default_config_path()).expanduser().absolute()
     if config_path.is_symlink() or config_path.parent.is_symlink():
         raise ValueError('Refusing a symlinked Claude config file or config directory.')
@@ -136,7 +139,7 @@ def install_claude_desktop(data, config_path=None, apply=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', required=True, help='Initialized Mnemos data directory.')
+    parser.add_argument('--data', help='Pin an initialized data directory; omitted uses the selected default.')
     parser.add_argument('--config', help='Override the Claude Desktop config path.')
     parser.add_argument('--apply', action='store_true', help='Save the connection after successful preflight.')
     args = parser.parse_args()

@@ -7,6 +7,8 @@ description: Document engineering work or export session context to a Mnemos Obs
 
 Turn the requested work into the smallest useful set of clear, evidence-backed documents. Use the configured Mnemos installation and private data directory; do not select an unrelated Obsidian vault.
 
+CLI commands without `--data` follow the selected default for that checkout. Use an explicit data path only when it is the intended authorized workspace; installed MCP connections stay pinned to their configured paths when the default changes. Confirm the destination before capturing a handoff exported from another workspace.
+
 ## Establish the evidence
 
 Read the relevant accessible conversation, changes, and results. Distinguish actions that ran from proposals, and observed outcomes from assumptions. Keep the original rationale when it is supported. If a source is unavailable, state the limitation rather than reconstructing its contents.

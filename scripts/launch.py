@@ -19,7 +19,13 @@ def main():
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
     pointer = ROOT / 'data' / 'installation.json'
-    data = Path(args.data).expanduser().resolve() if args.data else load_selection(pointer, ROOT / 'data')
+    if args.data:
+        data = Path(args.data).expanduser().absolute()
+        if data.is_symlink():
+            raise ValueError('The Mnemos data folder must not be a symbolic link.')
+        data = data.resolve()
+    else:
+        data = load_selection(pointer, ROOT / 'data')
     initialized = (data / 'config.json').exists()
     server = MnemosServer(('127.0.0.1', args.port), data, installation_file=None if args.data else pointer)
     url = f'http://127.0.0.1:{server.server_address[1]}' + ('' if initialized else '/setup.html')
