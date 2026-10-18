@@ -2,6 +2,10 @@
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Standalone reconstruction prompt
+
+The [reconstruction prompt](../prompts/rebuild-mnemos-v0.3.0.md) embeds all 94 tracked source files from commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. Recovery into a fresh directory reproduced every file byte and POSIX executable mode. The recovery utility was extracted from the finished prompt and executed independently. Checks confirmed rejection of a truncated payload, archive corruption, a traversal path even with a recomputed archive checksum, and an existing destination without changing its contents. The recovered application passed all 122 Python tests and 37 JavaScript tests. This verifies source recovery and those automated checks; it does not claim that every ChatGPT environment can execute attachments or that desktop binaries built elsewhere will be byte-identical.
+
 ## Automated checks
 
 The Python suite passed 122 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.

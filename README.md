@@ -19,6 +19,14 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 The application uses Python's standard library. It does not require a model API key, paid inference service, database server, or Obsidian community plugin. Your chosen assistant does the reasoning; Mnemos stores and retrieves the knowledge.
 
+## Recreate this version with ChatGPT
+
+If you cannot obtain the repository normally, download the standalone [Mnemos 0.3.0 reconstruction prompt](prompts/rebuild-mnemos-v0.3.0.md). Attach the **entire file** to ChatGPT and ask it to follow the prompt. It includes detailed technical/setup instructions, a Python recovery utility, and a checksum-verified snapshot of all 94 source files at commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. No GitHub access or Git installation is needed to recover that source.
+
+The file is approximately 355 KiB because it carries the application itself. Attach it rather than pasting its encoded payload into the conversation. With file/code tools, ChatGPT can reconstruct the exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the included recovery utility. Python 3.11+ is required for source recovery and execution. The prompt preserves the original version rather than silently generating a different implementation; newly built desktop binaries may differ by platform and build environment.
+
+This frozen snapshot excludes private notes, credentials, machine configuration, Git history, and the prompt itself. Its manifest verifies integrity, not publisher identity. Use a trusted copy. Follow the prompt's checks before running recovered code, and recover into a new folder so an existing installation is preserved.
+
 ## Install and start
 
 **Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.
