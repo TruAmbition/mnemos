@@ -169,7 +169,7 @@ test('Markdown handoff preserves source revisions, status, body, and citations',
   assert.match(markdown, /https:\/\/example.com\/evidence/);
 });
 
-const setupSource = fs.readFileSync(path.join(__dirname,'..','web','setup.js'),'utf8');
+const setupSource = fs.readFileSync(path.join(__dirname,'..','web','setup.js'),'utf8').replace(/\r\n/g, '\n');
 assert.match(setupSource, startup, 'Update the helper harness if setup startup changes.');
 const setupContext = {document:{addEventListener(){}},window:{addEventListener(){}},setTimeout,clearTimeout};
 vm.createContext(setupContext);
