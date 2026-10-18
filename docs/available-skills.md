@@ -15,6 +15,8 @@ Building is local and requires no tunnel, model API key, or inference service. I
 
 ## What suggestions mean
 
+Each card includes **Why create this skill?**: the potential reuse benefit and the documented scope behind the suggestion. Existing workflow suggestions explain their task/source counts and approval checkpoints. AI suggestions show the accepted proposal’s rationale; smaller skills also describe their expected outputs. These explanations reuse saved evidence and do not make new model calls or claim measured time savings or repeated usage.
+
 Candidates include non-archived runbooks, troubleshooting notes, microtasks, skill documents, other documents with a procedure heading and multiple numbered steps, and valid workflow dependency plans. Search matches the candidate title, project, and explanation. These automatic candidates use structural discovery. Accepted AI proposals appear alongside them; their reasoning comes from the assistant you use for the handoff. Neither route proves how often you repeat a task.
 
 **Verified sources** means the referenced records are marked verified, not that the new package has passed an operational test. **Review needed** identifies unverified sources. Bundled **Examples** are hidden unless you enable them and remain explicitly labeled. Invalid workflow plans appear as warnings rather than buildable suggestions.

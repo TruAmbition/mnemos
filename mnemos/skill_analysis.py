@@ -145,7 +145,7 @@ def accept(data,payload):
 
 
 def candidates(data):
-    from .skill_builder import _candidate,_digest
+    from .skill_builder import _candidate,_digest,_short_text
     result=[];warnings=[]
     folder=core.safe_path(Path(data),'skill-proposals')
     for path in sorted(folder.glob('proposal-*.json')) if folder.exists() else []:
@@ -160,6 +160,8 @@ def candidates(data):
                 candidate=_candidate(key,child['title'] if child else plan['title'],[docs[i] for i in ids],
                     'AI-proposed reusable skill' if child else 'AI-proposed workflow combining '+str(len(ids))+' documents')
                 candidate.update(readiness='review-needed',ai_plan={'title':plan['title'],'rationale':plan['rationale'],'skills':selected,'gaps':plan['gaps'],'standalone':child is not None})
+                candidate['why']={'summary':('This smaller skill could be reused independently once its required inputs are available. Expected outputs: '+_short_text('; '.join(child['outputs']),220)) if child else f"A single skill could coordinate the {len(selected)} proposed tasks across {len(ids)} documents, while each smaller skill remains available separately.",
+                                  'evidence':_short_text(plan['rationale'],500),'basis':'From your accepted AI proposal · review the reasoning'}
                 if child:candidate['description']=child['description']
                 candidate['revision']=_digest({'source_revision':candidate['revision'],'ai_plan':candidate['ai_plan']})
                 result.append(candidate)

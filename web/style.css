@@ -87,3 +87,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .analysis-source-list small { display:block; margin-left:24px; }
 .skill-file-path { overflow-wrap:anywhere; white-space:normal; }
 .skill-folder-form { display:grid; gap:10px; margin-top:20px; }
+
+.skill-why { margin:18px 0; padding-left:14px; border-left:3px solid var(--primary); }
+.skill-why h3 { font-size:14px; margin:0 0 8px; }
+.skill-why p { margin:8px 0; }
+.skill-why .skill-why-evidence { font-size:13px; }
+.skill-why small { display:block; font-size:11px; opacity:.8; }

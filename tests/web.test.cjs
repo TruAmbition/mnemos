@@ -478,7 +478,7 @@ test('Automatic project controls expose persisted on/off and escape check failur
 
 
 test('Suggested skill cards escape source text and keep review/example labels', () => {
-  const card=h.skillCandidateCard({id:'document:test',title:'<img src=x>',readiness:'example',source_count:1,project:'<script>',reason:'<svg>',sources:[{id:'test',title:'<img>',revision:'abc',status:'draft',example:true}],buildable:false});
+  const card=h.skillCandidateCard({id:'document:test',title:'<img src=x>',readiness:'example',source_count:1,project:'<script>',reason:'<svg>',why:{summary:'<img src=x>',evidence:'<script>evidence</script>',basis:'<svg>'},sources:[{id:'test',title:'<img>',revision:'abc',status:'draft',example:true}],buildable:false});
   assert.ok(!card.includes('<img'));assert.ok(!card.includes('<script>'));assert.ok(!card.includes('<svg>'));
   assert.match(card,/Example only/);assert.match(card,/disabled/);assert.match(card,/data-source-id="test"/);
 });

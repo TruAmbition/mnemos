@@ -31,6 +31,30 @@ def _metadata(doc):
     return {key: doc.get(key) for key in ('id', 'title', 'revision', 'status', 'example', 'type', 'project')}
 
 
+def _short_text(value, limit=360):
+    text=' '.join(str(value or '').split())
+    return text if len(text)<=limit else text[:limit].rsplit(' ',1)[0]+'…'
+
+
+def _suggestion_why(docs, workflow=None):
+    if workflow:
+        checkpoints=sum(bool(s.get('requires_approval')) for s in workflow['steps'])
+        return {'summary':'A single skill could coordinate these documented tasks in dependency order, so you can repeat the complete workflow with its checks intact.',
+                'evidence':f"The existing plan connects {len(workflow['steps'])} tasks across {len(docs)} source documents and declares {checkpoints} approval checkpoints.",
+                'basis':'Based on an existing workflow plan'}
+    doc=docs[0]
+    benefit={
+        'runbook':'A reusable skill could guide an assistant through this procedure the next time you need it, keeping the documented prerequisites and checks together.',
+        'troubleshooting':'A reusable diagnostic skill could help an assistant follow the documented checks and known fixes when these symptoms recur, instead of reconstructing the investigation.',
+        'microtask':'This bounded task could become a small skill you reuse independently or as one step in a larger workflow.',
+        'skill':'This skill document could become a portable assistant package with its supporting sources attached.'}
+    steps=len(re.findall(r'^\s*\d+[.)]\s+\S',doc['body'],re.M))
+    scope=_short_text(doc.get('summary'))
+    evidence=('Documented scope: '+scope) if scope else (f'The source contains {steps} numbered steps.' if steps else 'The note is categorized as '+doc['type'].replace('-',' ')+'. Review its completeness before building.')
+    return {'summary':benefit.get(doc['type'],'The documented steps could become a reusable procedure for an assistant to follow when this task comes up again.'),
+            'evidence':evidence,'basis':'Based on your documentation'}
+
+
 def _candidate(key, title, docs, reason, workflow=None):
     evidence = [_metadata(doc) for doc in docs]
     example = any(doc.get('example') for doc in docs)
@@ -39,7 +63,7 @@ def _candidate(key, title, docs, reason, workflow=None):
     return {'id': key, 'title': title, 'name': name+'-'+_digest(key)[:6],
             'description': ('Follow the documented '+('workflow' if workflow else 'procedure')+' for '+title+'. Use when asked to repeat this task.')[:200],
             'sources': evidence, 'project': next((d.get('project','') for d in docs if d.get('project')), ''),
-            'reason': reason, 'example': example,
+            'reason': reason, 'why': _suggestion_why(docs,workflow), 'example': example,
             'readiness': 'example' if example else 'verified-sources' if verified else 'review-needed',
             'revision': _digest({'sources': evidence, 'workflow': workflow}),
             'workflow': workflow, 'source_count': len(docs),
