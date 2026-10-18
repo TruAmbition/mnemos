@@ -6,6 +6,8 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 ## Included in this version
 
+- A standalone desktop build recipe, a Mac drag-to-Applications installer, and a launcher that reuses a background local service.
+- A local connection dashboard with workspace targets, mismatch notices, local tests, and service stop controls.
 - A searchable web library with document types, project filters, and draft/verified status.
 - A separate Obsidian vault containing runbooks, knowledge items, troubleshooting, decisions, work logs, microtasks, and context handoffs.
 - Five reusable assistant skills for capture, recall, file handoffs, workflow planning, and building new skills from documentation.
@@ -19,11 +21,13 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Install and start
 
-Download this repository as a ZIP and extract it, or clone it using its actual GitHub URL. Install **Python 3.11 or later**, then double-click **start.command** on macOS or **start.cmd** on Windows. On Linux, run `python3 scripts/launch.py` from the repository folder.
+**Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.
+
+**Source checkout:** download this repository as a ZIP and extract it, or clone it using its actual GitHub URL. Install **Python 3.11 or later**, then double-click **start.command** on macOS or **start.cmd** on Windows. On Linux, run `python3 scripts/launch.py` from the repository folder.
 
 The launcher opens the local portal. On first use, `/setup.html` guides you through the author name, a dedicated data folder, local or cloud backup storage, Obsidian detection/installation, and an assistant mode. Choose **local tools**, **cloud file handoff**, or an optional **existing connection**. Choosing a mode does not create a cloud account connection. Setup shows the appropriate assistant commands and portable skill options; it preserves unrelated assistant settings.
 
-Keep the launch terminal open while using the portal; Ctrl+C stops it. Open [local setup](http://127.0.0.1:4318/setup.html) later to review installation choices. The terminal workflow remains available:
+The normal launcher keeps the service running in the background; no terminal window needs to stay open. Reopen the same launcher to return to the running library. Use **Connections → Stop local service** to stop it. The setup header also offers a stop control before initialization. `--foreground` retains terminal diagnostics. Open [local setup](http://127.0.0.1:4318/setup.html) later to review installation choices. The terminal workflow remains available:
 
 ```sh
 python3 scripts/setup.py
@@ -33,9 +37,9 @@ python3 -m mnemos serve
 
 On Windows, use `py -3` in place of `python3` if that is your Python launcher. Open [the local library](http://127.0.0.1:4318).
 
-Each checkout has **one active default workspace**. Reopen setup to update it, create a separate workspace, or select an existing initialized one. Applying a different workspace changes the default recorded in `data/installation.json`; it preserves the previous workspace's files, notes, and credentials. It does not copy or merge libraries. Commands without `--data` use this selected default, independent of the terminal's current directory; before any selection, they use this checkout's `data/` folder.
+Each installation has **one active default workspace**. Packaged builds keep their initial data folder in the user's application-data directory outside the app; source checkouts retain `data/`. Reopen setup to update it, create a separate workspace, or select an existing initialized one. Applying a different workspace changes the default recorded in `data/installation.json`; it preserves the previous workspace's files, notes, and credentials. It does not copy or merge libraries. Commands without `--data` use this selected default, independent of the terminal's current directory; before any selection, they use this checkout's `data/` folder.
 
-An explicit `--data /absolute/path/to/private-data` pins that command to the supplied workspace and stays outside default switching. Installed Codex, Claude, and tunnel connections also contain explicit paths: changing the default does **not** move, retarget, or disconnect them. Review a connection's intended workspace separately. A manually configured MCP server without `--data` stops accepting calls after the default changes and must be restarted. See [connection scope](docs/assistant-connections.md#workspace-selection-and-pinned-connections).
+An explicit `--data /absolute/path/to/private-data` pins that command to the supplied workspace and stays outside default switching. Installed Codex, Claude, and tunnel connections also contain explicit paths: changing the default does **not** move, retarget, or disconnect them. Use **Connections** to see each identified target and test its local tools. A healthy connection can still point to a different workspace. A manually configured MCP server without `--data` stops accepting calls after the default changes and must be restarted. See [connection scope](docs/assistant-connections.md#workspace-selection-and-pinned-connections).
 
 Setup creates a dedicated `vault` inside your chosen data folder (`data/` in this checkout by default). It checks for Obsidian and lets you request installation if it is missing. The optional terminal setup also asks for your author name and backup choice. It prefers Homebrew on macOS, winget on Windows, or Flatpak on Linux. When no supported package manager is available, it uses an official release download: DMG on macOS, EXE on Windows, or AppImage on Linux. If installation fails, it explains the result and points to the [official Obsidian download](https://obsidian.md/download). It does not silently report a failed install as complete.
 

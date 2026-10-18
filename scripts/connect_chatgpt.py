@@ -50,7 +50,8 @@ def executable(value):
 
 def preflight(data):
     load_config(data)
-    command = [sys.executable, str(ROOT / 'scripts/mcp_server.py'), '--data', str(data)]
+    from mnemos.runtime import tool_command
+    command = tool_command('mcp_server', '--data', str(data))
     requests = [
         {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {
             'protocolVersion': '2025-03-26', 'clientInfo': {'name': 'mnemos-tunnel-check', 'version': '1'},

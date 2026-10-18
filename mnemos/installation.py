@@ -10,5 +10,6 @@ def resolve_data(value=None):
         # Leave symlinks intact so storage validation can reject them.
         return Path(value).expanduser().absolute()
     from .onboarding import load_selection
-    default = core.ROOT / 'data'
+    from .runtime import default_root
+    default = default_root()
     return load_selection(default / 'installation.json', default)

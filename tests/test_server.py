@@ -55,6 +55,31 @@ class ServerTests(unittest.TestCase):
     def token(self, role):
         return core.issue_token(self.data, role, role.title())
 
+    def test_connection_dashboard_is_local_owner_only(self):
+        from unittest.mock import patch
+        from mnemos import connections
+        with patch.object(connections, 'inventory', return_value={'connections': []}):
+            self.assertEqual(self.request(path='/api/connections')[0], 200)
+            self.assertEqual(self.request(path='/api/connections', headers={'Authorization': 'Bearer ' + self.token('reader')})[0], 403)
+            self.assertEqual(self.request(path='/api/connections', headers={'Origin': 'https://elsewhere.invalid'})[0], 403)
+            self.server.setup_enabled = False
+            self.assertEqual(self.request(path='/api/connections')[0], 403)
+
+    def test_stop_requires_owner_workspace_and_managed_launcher(self):
+        from unittest.mock import patch
+        self.assertEqual(self.request('POST', '/api/runtime/stop', {})[0], 409)
+        self.server.launcher_managed = True
+        self.assertEqual(self.request('POST', '/api/runtime/stop', {}, {'X-Mnemos-Workspace': 'stale'})[0], 409)
+        self.assertEqual(self.request('POST', '/api/runtime/stop', {}, {'Origin': 'https://attacker.invalid'})[0], 403)
+        self.assertEqual(self.request('POST', '/api/runtime/stop', {}, {'Authorization': 'Bearer ' + self.token('reader')})[0], 403)
+        with patch.object(self.server, 'shutdown') as shutdown:
+            self.assertEqual(self.request('POST', '/api/runtime/stop', {})[0], 200)
+            for _ in range(20):
+                if shutdown.called:
+                    break
+                threading.Event().wait(.01)
+            shutdown.assert_called_once()
+
     def test_local_owner_is_constrained_by_host_and_origin(self):
         status, _, content = self.request()
         self.assertEqual(status, 200)

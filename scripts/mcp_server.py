@@ -115,7 +115,8 @@ def main(argv=None):
     from mnemos.installation import resolve_data
     from mnemos import core, onboarding
     uses_default = args.data is None
-    pointer = core.ROOT / 'data' / 'installation.json'
+    from mnemos.runtime import default_root
+    pointer = default_root() / 'installation.json'
     fingerprint = onboarding.selection_fingerprint(pointer) if uses_default else None
     args.data = resolve_data(args.data)
     load_config(args.data)

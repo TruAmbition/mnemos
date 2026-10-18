@@ -466,7 +466,7 @@ class OnboardingTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('mnemos_launch_test', core.ROOT / 'scripts/launch.py')
         launcher = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(launcher)
-        with patch.object(launcher, 'ROOT', self.base), patch.object(launcher.sys, 'argv', ['launch.py']), \
+        with patch.object(launcher, 'ROOT', self.base), patch.object(launcher.sys, 'argv', ['launch.py', '--foreground']), \
                 patch.object(launcher, 'MnemosServer') as server, patch.object(launcher.threading, 'Timer') as timer, \
                 patch.object(launcher.webbrowser, 'open') as browser, redirect_stdout(io.StringIO()):
             server.return_value.server_address = ('127.0.0.1', 4318)
@@ -480,7 +480,7 @@ class OnboardingTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('mnemos_launch_existing_test', core.ROOT / 'scripts/launch.py')
         launcher = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(launcher)
-        with patch.object(launcher, 'ROOT', self.base), patch.object(launcher.sys, 'argv', ['launch.py']), \
+        with patch.object(launcher, 'ROOT', self.base), patch.object(launcher.sys, 'argv', ['launch.py', '--foreground']), \
                 patch.object(launcher, 'MnemosServer') as server, patch.object(launcher.threading, 'Timer') as timer, \
                 patch.object(launcher.webbrowser, 'open') as browser, redirect_stdout(io.StringIO()):
             server.return_value.server_address = ('127.0.0.1', 4318)

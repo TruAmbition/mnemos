@@ -1,12 +1,12 @@
-# Version 0.2 validation
+# Version 0.3 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
 ## Automated checks
 
-The Python suite passed 109 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.
+The Python suite passed 122 tests covering document storage, draft and reader boundaries, multiple authors and optimistic concurrency, basic Obsidian frontmatter, path protection, workflow ordering, authentication, origin checks, backup recovery, cloud failure retention, verified-only export, context budgets, source provenance, project-scoped agent configuration, Claude Desktop configuration preservation, and private ChatGPT tunnel setup and credential handling.
 
-The JavaScript helper suite passed 36 tests covering Markdown rendering and unsafe-link rejection, JSON and Markdown imports, draft enforcement, preservation of source references, dates, keyword relevance, static recall budgets, setup flows, and stale-workspace recovery. Run it with `node --test tests/web.test.cjs`; Node is only needed for these development tests, not for running Mnemos.
+The JavaScript helper suite passed 37 tests covering Markdown rendering and unsafe-link rejection, JSON and Markdown imports, draft enforcement, preservation of source references, dates, keyword relevance, static recall budgets, setup flows, and stale-workspace recovery. Run it with `node --test tests/web.test.cjs`; Node is only needed for these development tests, not for running Mnemos.
 
 The added checks cover fresh browser setup, isolated storage validation, custom-location persistence, preservation of documents and tokens, local-owner-only setup, Windows command quoting, source selection, bounded context packs, skill archive contents, skills-only installs, legacy connection compatibility, generated Obsidian links, and safe new-draft import even from an existing editor. All five skills passed the skill-creator validator.
 
@@ -15,6 +15,14 @@ Workspace lifecycle checks cover explicit update/create/select modes, default pe
 The MCP capture test exercises draft-only capture and subsequent recall. A separate skill exercise saved a searchable handoff that distinguished a source-reported successful test from a staging deployment that was proposed but not performed. It retained unknowns and removed the supplied credential placeholder.
 
 The ChatGPT Actions schema parses as JSON, resolves its local schema references, and exposes only recall, document read, and draft capture with Bearer authentication. The fields and role constraints were checked against the application handlers.
+
+## Desktop and connection checks
+
+Version 0.3 adds tests for connection inventory, pinned-workspace mismatches, credential omission, malformed/disabled/missing configurations, refusal to execute arbitrary configured commands, read-only MCP tool discovery, tunnel health interpretation, cache invalidation, bundled command dispatch, external writable data locations, same-instance reuse, and local-owner/workspace/origin protections around stop controls.
+
+The standalone Apple Silicon Mac app was built with Python 3.14.6 and PyInstaller 6.16.0 on macOS 26.5. An isolated bundled CLI initialized a test vault; bundled stdio exposed capture, recall, search, read, and workflow tools. A detached bundled launch started successfully (first startup took approximately 36 seconds), its dashboard API responded, a second launch reused the same workspace instance, and its stop endpoint completed. The source launcher also reopened the existing library in the background. Browser checks exercised local Codex discovery and the existing tunnel health check without requesting credentials or changing connections.
+
+The Mac app uses ad-hoc signing, not Developer ID/notarization. Windows and Linux build automation is included but those packaged artifacts have not been run locally. Test status proves the stated local check only; assistant/cloud account access is not inferred.
 
 ## Live checks
 

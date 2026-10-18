@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -441,4 +441,14 @@ test('Cross-process workspace changes retain the draft and do not enter a reload
   await assert.rejects(app.handler.api('/api/backups'),error=>error.restartRequired===true);
   assert.equal(app.handler.state.workspaceRestart,true);await app.handler.reloadActiveWorkspace();
   assert.equal(app.calls.length,1);assert.equal(app.handler.readRecovery().document.body,'Preserve this evidence.');
+});
+
+
+test('Connection cards escape local configuration text and distinguish pinned targets', () => {
+  const html = h.connectionCard({id:'claude-code',name:'<img src=x>',status:'tested',detail:'Local tools only',workspace:'/old/<script>',binding:'Pinned workspace',matches_active:false,testable:true,last_tested:null});
+  assert.match(html,/Tested locally/);
+  assert.match(html,/Uses a different workspace/);
+  assert.match(html,/&lt;script&gt;/);
+  assert.ok(!html.includes('<img'));
+  assert.match(html,/data-client="claude-code"/);
 });

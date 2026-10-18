@@ -39,10 +39,8 @@ def connection_for(data):
     data = resolve_data(data)
     load_config(data)
     data = data.resolve()
-    return {
-        'command': str(Path(sys.executable).resolve()),
-        'args': [str(ROOT / 'scripts/mcp_server.py'), '--data', str(data)],
-    }
+    from mnemos.runtime import mcp_connection
+    return mcp_connection(data)
 
 
 def probe_connection(connection):

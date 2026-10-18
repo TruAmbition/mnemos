@@ -32,3 +32,8 @@ dist/
 /.claude/
 /.codex/
 /.mcp.json
+
+/.mnemos-runtime/
+/.venv-build/
+/desktop-output/
+/desktop-work/

@@ -97,7 +97,9 @@ def choices(data, config=None):
     installed = detect_obsidian(data)
     command_shell = 'powershell' if sys.platform == 'win32' else 'posix'
     def command(script, *args):
-        return _shell_command([sys.executable, str(core.ROOT / 'scripts' / script), *args, '--data', str(data)], command_shell)
+        from .runtime import tool_command
+        project_args = ['--project', str(Path.home() / 'path-to-your-project')] if getattr(sys, 'frozen', False) and script == 'install_agents.py' else []
+        return _shell_command(tool_command(script, *args, *project_args, '--data', str(data)), command_shell)
     return {
         'initialized': config is not None, 'data_path': str(data),
         'author': config.get('owner', 'Local engineer') if config else 'Local engineer',
@@ -111,6 +113,7 @@ def choices(data, config=None):
                      'claude_desktop': command('install_claude_desktop.py', '--apply'),
                      'chatgpt': command('connect_chatgpt.py', 'connect')},
         'command_shell': command_shell,
+        'packaged_app': bool(getattr(sys, 'frozen', False)),
         'connection_status': 'not-checked', 'library_url': '/',
     }
 

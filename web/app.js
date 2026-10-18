@@ -10,6 +10,7 @@
     library:'M3 4h6v7H3z M14 4h7v7h-7z M3 16h6v5H3z M14 16h7v5h-7z',
     search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
     handoff:'M3 7h12 M11 3l4 4-4 4 M21 17H9 M13 13l-4 4 4 4',
+    connections:'M7 7h4v10H7z M15 7h4v10h-4z M3 12h4 M11 12h4 M19 12h3',
     setup:'M12 3v6 M12 15v6 M3 12h6 M15 12h6 M8 8l-3-3 M16 16l3 3 M8 16l-3 3 M16 8l3-3',
     capture:'M14 4l6 6 M3 21l5-1 13-13a2 2 0 0 0-5-5L3 15v6z',
     workflows:'M12 3v5 M5 13v-5h14v5 M3 14h4v6H3z M17 14h4v6h-4z M10 2h4v4h-4z',
@@ -136,7 +137,7 @@
     const links = [{id:'library',label:'Library',count:documents().length},{id:'recall',label:'Recall context'},{id:'handoff',label:'Cloud handoff'},{id:'workflows',label:'Workflows',count:workflows().length}];
     if (canWrite()) links.splice(1,0,{id:'capture',label:'Capture knowledge'});
     if (isOwner() || staticMode) links.push({id:'settings',label:staticMode ? 'About this vault' : 'Settings',divider:true});
-    if(isOwner()&&state.data.setup_available===true)links.push({id:'setup',label:'Workspace setup',href:'/setup.html'});
+    if(isOwner()&&state.data.setup_available===true)links.push({id:'connections',label:'Connections'},{id:'setup',label:'Workspace setup',href:'/setup.html'});
     $('#navigation').innerHTML = links.map(item => `${item.divider ? '<div class="nav-divider"></div>' : ''}<a href="${item.href||'#'+item.id}" class="nav-item${state.view===item.id ? ' active' : ''}" ${state.view===item.id?'aria-current="page"':''}>${icon(item.id)}<span>${item.label}</span>${item.count !== undefined ? `<span class="count">${item.count}</span>` : ''}</a>`).join('');
     const author = state.data.session?.author || role();
     $('#account-avatar').textContent = String(author || 'R').slice(0,1).toUpperCase();
@@ -157,7 +158,7 @@
   function route() {
     if (!state.data) return;
     const [view, id] = window.location.hash.slice(1).split('/');
-    const valid = ['library','recall','handoff','workflows',...(canWrite()?['capture']:[]),...((isOwner()||staticMode)?['settings']:[])];
+    const valid = [...(isOwner()&&state.data.setup_available?['connections']:[]),'library','recall','handoff','workflows',...(canWrite()?['capture']:[]),...((isOwner()||staticMode)?['settings']:[])];
     state.view = valid.includes(view) ? view : 'library';
     closeOverlay();
     render();
@@ -168,11 +169,11 @@
   }
   function render() {
     updateChrome();
-    const labels = {library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
+    const labels = {connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
     document.title = `${labels[state.view]} · Mnemos`;
     if (role()==='anonymous') { renderLocked(); updateWorkspaceNotice(); return; }
-    ({library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
+    ({connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
     updateWorkspaceNotice();
   }
   function heading(eyebrow, title, description, action='') {
@@ -523,6 +524,50 @@
     $('#handoff-results').innerHTML=`<section class="panel handoff-selection"><div class="form-heading"><h2>Choose what to share</h2><div class="handoff-selection-tools"><button class="button text small" data-action="handoff-select-all">Select all</button><button class="button text small" data-action="handoff-clear">Clear</button></div></div><p>Nothing is selected automatically. Open each source to check its contents. JSON and Markdown downloads include the full text of selected documents; copying context includes only their bounded excerpts. Handoff instructions are kept separately in downloaded packs.</p>${staticMode?notice('Reader preview · These are example documents. No cloud connection is active.'):''}<div class="handoff-source-list">${sourceDocs.map(doc=>`<div class="handoff-source"><label class="handoff-checkbox"><input type="checkbox" data-handoff-select="${escape(doc.id)}"${state.handoffSelected.includes(doc.id)?' checked':''}><span class="sr-only">Include ${escape(doc.title)}</span></label><div><button class="handoff-source-title" data-document="${escape(doc.id)}">${escape(doc.title)} ${icon('link')}</button><p>${escape(doc.summary||'Open this document to review its full contents.')}</p><div class="handoff-source-meta">${statusBadge(doc.status)}${doc.example?'<span class="example-tag">Example</span>':''}<span>${escape(typeName(doc.type))}</span><span>Revision ${escape(String(doc.revision||'not recorded').slice(0,12))}</span></div></div></div>`).join('')}</div><div class="handoff-export-bar"><span><strong>${state.handoffSelected.length}</strong> of ${sourceDocs.length} sources selected</span><div><button class="button small" data-action="copy-handoff"${hasSelection?'':' disabled'}>${icon('copy')} Copy context</button><button class="button small" data-action="download-handoff-md"${hasSelection?'':' disabled'}>${icon('download')} Markdown</button><button class="button primary small" data-action="download-handoff-json"${hasSelection?'':' disabled'}>${icon('download')} JSON pack</button></div></div>${hasSelection?`<details class="handoff-context-preview"><summary>Review the selected context excerpt</summary><pre>${escape(selected.recall.context)}</pre></details>`:''}<p class="handoff-note">Attach the downloaded file to your chosen cloud chat yourself. Preserve source IDs and revisions as citations, and put relevant source IDs in related_ids. Omit the returned draft’s own id and revision; import it from a new Capture form as a draft.</p></section>`;
     $$('[data-handoff-select]').forEach(input=>input.addEventListener('change',()=>{const selectedId=input.dataset.handoffSelect;state.handoffSelected=input.checked?[...new Set([...state.handoffSelected,selectedId])]:state.handoffSelected.filter(id=>id!==selectedId);renderHandoffResults();$(`[data-handoff-select="${CSS.escape(selectedId)}"]`)?.focus();}));
   }
+  const connectionLabels = {'configured':'Configured','tested':'Tested locally','disconnected':'Disconnected','needs-attention':'Needs attention'};
+  function connectionCard(row) {
+    const label=connectionLabels[row.status]||'Needs attention';
+    return `<article class="panel connection-card"><div class="connection-card-title"><span class="type-icon">${icon(row.id.startsWith('chatgpt')?'cloud':'link')}</span><h2>${escape(row.name)}</h2><span class="connection-status ${Object.hasOwn(connectionLabels,row.status)?row.status:'needs-attention'}">${escape(label)}</span></div><p>${escape(row.detail)}</p>${row.workspace?`<div class="connection-target"><span class="field-label">${escape(row.binding||'Workspace')}</span><code>${escape(row.workspace)}</code><span class="connection-target-note ${row.matches_active?'':'different'}">${row.matches_active?'Uses the active workspace':'Uses a different workspace — changing the default did not move this connection.'}</span></div>`:'<div class="connection-target"><span class="field-label">Workspace</span><span>Not identified</span></div>'}${row.config_path?`<details class="connection-config"><summary>Configuration location</summary><code>${escape(row.config_path)}</code></details>`:''}<div class="connection-card-footer"><small>${row.last_tested?'Last tested '+escape(new Date(row.last_tested).toLocaleString()):'Not tested in this app session'}</small>${row.testable?`<button class="button small" data-action="test-connection" data-client="${escape(row.id)}">Test locally ${icon('arrow')}</button>`:''}</div></article>`;
+  }
+  async function renderConnections() {
+    $('#main').innerHTML=heading('KNOW WHAT IS CONNECTED','Your assistants. Your workspace.','See where each connection points and check the local tools it depends on.')+activeWorkspacePanel()+
+      `<section class="panel runtime-panel"><div><span class="workspace-active-badge"><i></i> Local service running</span><h2>Mnemos is open on this computer.</h2><p>Closing this browser tab keeps the library running. Reopen the Mnemos app to return here.</p><small>Stopping the library leaves your notes intact. Separate assistant and tunnel processes keep their own lifecycle.</small></div><button class="button" id="stop-runtime" data-action="stop-runtime" disabled>Checking service…</button></section><section class="panel"><form id="connection-project-form"><label class="field-label" for="connection-project">Project to inspect</label><div class="connection-project-row"><input id="connection-project" placeholder="Optional absolute path to an engineering project" value="${escape(state.connectionProject||'')}"><button class="button" type="submit">Refresh configuration</button></div><p class="connection-help">Inspect a project’s Codex and Claude Code settings alongside user settings. This does not change any connection.</p></form></section><div id="connections-list" aria-live="polite">Loading connection settings…</div><section class="notice"><span>${icon('info')} <strong>What “tested” means</strong><br>Local assistant tests open the configured workspace with this app’s trusted runtime and list available tools. Tunnel tests check the local client’s health and readiness. Neither test confirms a cloud account connection. Ask your assistant to “recall relevant Mnemos context” for an end-to-end check. Results are kept for this service session and reset when the configuration changes.</span></section><div class="connection-links"><a class="button" href="/setup.html">Set up an assistant</a><a class="button" href="#handoff">Use cloud handoff without a tunnel</a></div>`;
+    $('#connection-project-form').addEventListener('submit',async event=>{event.preventDefault();state.connectionProject=$('#connection-project').value.trim();await loadConnections();});
+    loadConnections();
+    try {const runtime=await api('/api/runtime');const button=$('#stop-runtime');if(button){button.disabled=!runtime.managed;button.textContent=runtime.managed?'Stop local service':'Managed externally';}}
+    catch(error){const button=$('#stop-runtime');if(button)button.textContent='Service controls unavailable';}
+  }
+  async function loadConnections() {
+    const list=$('#connections-list');if(!list)return;
+    list.innerHTML='<div class="panel" role="status">Checking configuration…</div>';
+    try {
+      const result=await api('/api/connections'+(state.connectionProject?'?project='+encodeURIComponent(state.connectionProject):''));
+      if(state.view!=='connections')return;
+      state.connectionProject=result.project;
+      $('#connection-project').value=result.project;
+      list.innerHTML=`<div class="connection-grid">${result.connections.map(connectionCard).join('')}</div><p class="connection-scope">${escape(result.scope)}</p>`;
+    }catch(error){if(list.isConnected)list.innerHTML=notice(error.message,'error');}
+  }
+  async function testConnection(button) {
+    button.disabled=true;button.textContent='Testing…';
+    try {
+      const result=await api('/api/connections/test',{method:'POST',body:JSON.stringify({client:button.dataset.client,project:state.connectionProject||null})});
+      if(state.view==='connections')$('#connections-list').innerHTML=`<div class="connection-grid">${result.connections.map(connectionCard).join('')}</div><p class="connection-scope">${escape(result.scope)}</p>`;
+    }catch(error){toast(error.message,true);if(button.isConnected){button.disabled=false;button.textContent='Try test again';}}
+  }
+  async function stopRuntime(confirmed=false) {
+    if(!confirmed){
+      openOverlay(`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="stop-title"><button class="icon-button" aria-label="Close stop dialog" data-close>${icon('close')}</button><h2 id="stop-title">Stop the local library?</h2><p>Your notes stay on disk. Reopen the Mnemos app to start it again. Separate assistant and tunnel processes keep running.</p><div class="form-actions"><button class="button" data-close>Keep running</button><button class="button primary" data-action="confirm-stop-runtime">Stop now</button></div></section>`,true);return;
+    }
+    closeOverlay();
+    const button=$('#stop-runtime');button.disabled=true;button.textContent='Stopping…';
+    try {
+      await api('/api/runtime/stop',{method:'POST',body:'{}'});
+      $('#connection-label').textContent='Local service stopped';
+      $('#main').innerHTML=heading('YOUR NOTES ARE SAFE','Mnemos is stopped.','Reopen the Mnemos app or your normal launcher to start the local library again.')+notice('You can close this browser tab. Your vault and assistant settings have not changed.');
+    }catch(error){toast(error.message,true);button.disabled=false;button.textContent='Stop local service';}
+  }
+
   function renderSettings() {
     if(staticMode){
       $('#main').innerHTML=heading('PORTABLE BY DESIGN','Your knowledge. Your files.','This is a read-only preview of a Mnemos vault. The full toolkit connects the reader, your AI workflow, and an isolated Obsidian vault.')+`<div class="settings-layout"><section class="panel"><div class="panel-heading">${icon('shield')}<h2>A durable home for engineering knowledge</h2></div><p>Mnemos stores documents as ordinary Markdown files with structured metadata. Obsidian and this portal read the same knowledge.</p><div class="settings-fact"><span>Preview access</span><strong>Read only</strong></div><div class="settings-fact"><span>Knowledge items</span><strong>${documents().length}</strong></div><div class="settings-fact"><span>Workflow execution</span><strong>Reviewable plans only</strong></div><div class="settings-fact"><span>Storage</span><strong>Your own isolated vault</strong></div><div class="settings-fact"><span>Backup choices</span><strong>Local folder or rclone remote</strong></div>${notice('This preview uses example documents. It does not create a vault, connect to cloud storage, or back up your files.')}<p style="margin-bottom:0">Run the downloadable toolkit to create your own vault, choose a backup destination, and enable authoring.</p></section><section class="panel"><div class="panel-heading">${icon('knowledge')}<h2>Ready for a team</h2></div><p>Start with one author and invite more contributors as the library grows.</p><dl class="role-grid"><dt>Owner</dt><dd>Configures the vault, manages backups, and verifies documentation.</dd><dt>Author</dt><dd>Creates and updates drafts with traceable source evidence.</dd><dt>Reader</dt><dd>Finds knowledge, recalls context, and reviews workflows.</dd></dl></section></div>`;return;
@@ -589,6 +634,9 @@
     if(target.closest('#navigation')&&target.getAttribute('href').startsWith('#')){event.preventDefault();navigate(target.getAttribute('href').slice(1));return;}
     switch(target.dataset.action){
       case 'reload':load();break;
+      case 'test-connection':await testConnection(target);break;
+      case 'stop-runtime':await stopRuntime();break;
+      case 'confirm-stop-runtime':await stopRuntime(true);break;
       case 'reload-active-workspace':await reloadActiveWorkspace();break;
       case 'download-recovered-draft':if(state.recovery)downloadText('mnemos-recovered-draft.json',JSON.stringify(state.recovery.document,null,2),'application/json');break;
       case 'dismiss-recovered-draft':state.recovery=null;try{sessionStorage.removeItem('mnemos-draft-recovery');}catch{}updateWorkspaceNotice();break;

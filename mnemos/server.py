@@ -56,6 +56,9 @@ class MnemosServer(ThreadingHTTPServer):
         if not bound_loopback and not public_hosts:
             raise core.MnemosError("Network sharing requires --public-host with the hostname readers will use.")
         self.sessions, self.login_failures = {}, {}
+        self.connection_checks = {}
+        self.launcher_managed = False
+        self.stopping = False
         self.session_lock = threading.RLock()
         super().__init__(address, handler or Handler)
         port = self.server_address[1]
@@ -190,6 +193,7 @@ class Handler(BaseHTTPRequestHandler):
         initialized = (self.server.data_path / 'config.json').exists()
         default = self.server.installation_file is not None
         return {'active_workspace': self.server.active_workspace(), 'workspace_id': self.server.workspace_id,
+                'service_managed': self.server.launcher_managed,
                 'settings_revision': onboarding.settings_revision(self.server.data_path),
                 'setup_modes': (['update', 'create', 'select'] if initialized else ['create', 'select']) if default else (['update'] if initialized else ['create']),
                 'selection_scope': 'default' if default else 'pinned'}
@@ -270,9 +274,25 @@ class Handler(BaseHTTPRequestHandler):
 
     def _dispatch(self, method):
         self._guard(method == "POST")
-        self.server.assert_selection_current()
         parsed = urlsplit(self.path)
         path = unquote(parsed.path)
+        if path in {'/api/runtime', '/api/runtime/stop'}:
+            self._require_local_setup()
+            self._workspace_guard(method, parsed)
+            if path == '/api/runtime' and method == 'GET':
+                return self._json({'kind': 'mnemos-local-runtime-v1', 'managed': self.server.launcher_managed, 'stopping': self.server.stopping,
+                                   'installation': str(self.server.installation_file) if self.server.installation_file else None,
+                                   'data_path': str(self.server.data_path), 'workspace_id': self.server.workspace_id,
+                                   'initialized': (self.server.data_path / 'config.json').exists()})
+            if path == '/api/runtime/stop' and method == 'POST':
+                self._body()
+                if not self.server.launcher_managed:
+                    raise core.MnemosError('This server is managed externally. Stop it with the process that started it.', 409)
+                self.server.stopping = True
+                self._json({'stopping': True})
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return
+        self.server.assert_selection_current()
         if path in {'/api/setup', '/api/setup/inspect', '/setup.html'}:
             self._require_local_setup()
         self._workspace_guard(method, parsed)
@@ -292,6 +312,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._setup_overview()
             if method == 'POST':
                 return self._apply_setup(self._body())
+        if path in {'/api/connections', '/api/connections/test'}:
+            self._require_local_setup()
+            from . import connections
+            if method == 'GET' and path == '/api/connections':
+                project = parse_qs(parsed.query).get('project', [None])[0]
+                return self._json(connections.public_inventory(connections.inventory(self.server.data_path, self.server.connection_checks, project)))
+            if method == 'POST' and path == '/api/connections/test':
+                payload = self._body()
+                if not isinstance(payload.get('client'), str) or (payload.get('project') is not None and not isinstance(payload['project'], str)):
+                    raise core.MnemosError('Choose a connection and project folder.')
+                return self._json(connections.check_connection(self.server.data_path, self.server.connection_checks, payload['client'], payload.get('project')))
         initialized = (self.server.data_path / 'config.json').exists()
         if not initialized:
             if path.startswith('/api/'):
@@ -342,13 +373,11 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             self._require(identity, {"owner", "author", "reader"})
         if method == "GET" and path == "/api/documents":
-            from urllib.parse import parse_qs
             query = parse_qs(parsed.query).get("query", [""])[0]
             return self._json({"documents": core.list_documents(data, role, query)})
         if method == "GET" and path.startswith("/api/documents/"):
             return self._json({"document": core.get_document(data, path[len("/api/documents/"):], role)})
         if method == "GET" and path == "/api/recall":
-            from urllib.parse import parse_qs
             from .recall import recall
             params = parse_qs(parsed.query)
             try:
@@ -357,7 +386,6 @@ class Handler(BaseHTTPRequestHandler):
                 raise core.MnemosError("Recall budget must be a number of characters.") from exc
             return self._json(recall(data, params.get("query", [""])[0], budget, role))
         if method == 'GET' and path == '/api/handoff':
-            from urllib.parse import parse_qs
             from .handoff import build_pack
             params = parse_qs(parsed.query)
             try:

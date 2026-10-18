@@ -8,15 +8,18 @@ from pathlib import Path
 
 from . import core
 from .installation import resolve_data
+from .runtime import default_root
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command == "init":
+        if command == "connections":
+            sub.add_argument("--project", help="Project folder whose assistant settings to inspect")
+        elif command == "init":
             sub.add_argument("--author", default="Local engineer")
         elif command == "serve":
             sub.add_argument("--host", default="127.0.0.1")
@@ -45,13 +48,16 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command == "init":
+        if args.command == "connections":
+            from .connections import inventory, public_inventory
+            result = public_inventory(inventory(args.data, {}, args.project))
+        elif args.command == "init":
             config = core.initialize(args.data, args.author)
             result = {"vault_path": str(core.vault_path(args.data)), "owner": config["owner"], "initialized": True}
         elif args.command == "serve":
             from .server import serve
             serve(args.data, args.host, args.port, args.public_host, args.require_auth,
-                  installation_file=core.ROOT / "data" / "installation.json" if uses_default else None)
+                  installation_file=default_root() / "installation.json" if uses_default else None)
             return 0
         elif args.command == "capture":
             payload = json.loads(sys.stdin.read() if args.file == "-" else Path(args.file).read_text("utf-8"))

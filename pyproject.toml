@@ -1,6 +1,6 @@
 [project]
 name = "mnemos-knowledge"
-version = "0.2.0"
+version = "0.3.0"
 description = "Portable engineering knowledge, context recall, and workflow planning with Obsidian"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -8,4 +8,4 @@ license = {file = "LICENSE"}
 dependencies = []
 
 # Source-checkout distribution: run the CLI from this repository.
-# A wheel/installer distribution is not currently provided.
+# Standalone desktop bundles are built with scripts/build_desktop.py.
