@@ -9,7 +9,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const appPath = path.join(__dirname, '..', 'web', 'app.js');
-const source = fs.readFileSync(appPath, 'utf8');
+const source = fs.readFileSync(appPath, 'utf8').replace(/\r\n/g, '\n');
 const startup = /  load\(\);\n\}\)\(\);\s*$/;
 assert.match(source, startup, 'Update this helper harness if application startup changes.');
 const registrationTarget = {addEventListener() {}};
