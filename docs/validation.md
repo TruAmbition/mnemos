@@ -12,6 +12,9 @@ The 0.4 Apple Silicon desktop bundle was rebuilt and smoke-tested with an isolat
 
 ## Standalone reconstruction prompt
 
+The 0.4.0 reconstruction prompt recovered all 98 files at commit `c730eaaed4e256ccf15df61de842b55565f87849`, with byte and permission comparisons against Git. Its independently extracted utility passed corruption, truncation, traversal, and existing-destination rejection checks. The source is the same baseline validated above; the older 0.3.0 prompt remains frozen.
+
+
 The [reconstruction prompt](../prompts/rebuild-mnemos-v0.3.0.md) embeds all 94 tracked source files from commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. Recovery into a fresh directory reproduced every file byte and POSIX executable mode. The recovery utility was extracted from the finished prompt and executed independently. Checks confirmed rejection of a truncated payload, archive corruption, a traversal path even with a recomputed archive checksum, and an existing destination without changing its contents. The recovered application passed all 122 Python tests and 37 JavaScript tests. This verifies source recovery and those automated checks; it does not claim that every ChatGPT environment can execute attachments or that desktop binaries built elsewhere will be byte-identical.
 
 ## Automated checks

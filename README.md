@@ -20,13 +20,13 @@ Start as one author with a team of readers. Add named author credentials when mo
 
 The application uses Python's standard library. It does not require a model API key, paid inference service, database server, or Obsidian community plugin. Your chosen assistant does the reasoning; Mnemos stores and retrieves the knowledge.
 
-## Recreate a frozen version with ChatGPT
+## Recreate this version with ChatGPT
 
-The historical 0.3.0 prompt below predates Projects. If you need that baseline without the repository, download the standalone [Mnemos 0.3.0 reconstruction prompt](prompts/rebuild-mnemos-v0.3.0.md). Attach the **entire file** to ChatGPT and ask it to follow the prompt. It includes detailed technical/setup instructions, a Python recovery utility, and a checksum-verified snapshot of all 94 source files at commit `38598d2ac1d1b02f179c957805db55cce9d8fd48`. No GitHub access or Git installation is needed to recover that source.
+Download the standalone [Mnemos 0.4.0 reconstruction prompt](prompts/rebuild-mnemos-v0.4.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and all 98 tracked files at commit `c730eaaed4e256ccf15df61de842b55565f87849`, including Projects. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
-The file is approximately 355 KiB because it carries the application itself. Attach it rather than pasting its encoded payload into the conversation. With file/code tools, ChatGPT can reconstruct the exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the included recovery utility. Python 3.11+ is required for source recovery and execution. The prompt preserves the original version rather than silently generating a different implementation; newly built desktop binaries may differ by platform and build environment.
+The file is approximately 709 KiB because it carries the source itself, including the historical 0.3.0 prompt. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
-This frozen snapshot excludes private notes, credentials, machine configuration, Git history, and the prompt itself. Its manifest verifies integrity, not publisher identity. Use a trusted copy. Follow the prompt's checks before running recovered code, and recover into a new folder so an existing installation is preserved.
+The frozen archive excludes private notes, credentials, machine configuration, Git history, and the current prompt itself. Its manifest verifies integrity, not publisher identity: use a trusted copy. Recover into a new folder to preserve existing installations. The [0.3.0 prompt](prompts/rebuild-mnemos-v0.3.0.md) remains available for the pre-Projects baseline.
 
 ## Install and start
 
