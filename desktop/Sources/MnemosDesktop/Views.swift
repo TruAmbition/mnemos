@@ -16,7 +16,7 @@ struct ManagerView: View {
                     Image(nsImage: NSApplication.shared.applicationIconImage).resizable().frame(width: 46, height: 46)
                     VStack(alignment: .leading) {
                         Text("MNEMOS").font(.system(size: 19, weight: .bold, design: .rounded)).tracking(2)
-                        Text("Engineering memory").font(.caption).foregroundStyle(.secondary)
+                        Text("Local workspace").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.top, 22).padding(.horizontal, 16)
                 List(selection: $model.section) {
@@ -25,7 +25,6 @@ struct ManagerView: View {
                 VStack(alignment: .leading, spacing: 9) {
                     Label(model.ownsService ? "Local service running" : "Service not connected", systemImage: "circle.fill")
                         .font(.caption).foregroundStyle(model.ownsService ? Color.cyan : Color.secondary)
-                    Text("Your notes. Your workstation.").font(.caption2).foregroundStyle(.secondary)
                 }.padding(18)
             }.background(Color(red: 0.055, green: 0.075, blue: 0.14)).preferredColorScheme(.dark)
             .navigationSplitViewColumnWidth(240)
@@ -35,7 +34,7 @@ struct ManagerView: View {
                     Text(model.section).font(.headline)
                     Spacer()
                     if model.busy { ProgressView().controlSize(.small); Text("Working…").font(.caption).foregroundStyle(.secondary) }
-                    Button { model.action { try await model.refresh() } } label: { Label("Reload", systemImage: "arrow.clockwise") }.disabled(model.busy)
+                    Button { model.action { try await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }.help("Reload configuration; replaces unsaved changes").accessibilityLabel("Reload configuration").disabled(model.busy)
                     Button("Open Library") { model.openWeb() }.buttonStyle(.borderedProminent).disabled(!model.ownsService)
                 }.padding(22)
                 Divider()
@@ -74,7 +73,7 @@ struct ManagerView: View {
     }
     func heading(_ title: String, _ subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 30, weight: .bold, design: .rounded))
+            Text(title).font(.system(size: 25, weight: .semibold, design: .rounded))
             Text(subtitle).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -87,36 +86,43 @@ struct ManagerView: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.07)))
     }
     var overview: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            heading("A home for your engineering memory.", "Manage Mnemos here. Capture work, recall context, and build reusable skills in your library.")
-            card("Active workspace") {
-                Label(model.setup?.initialized == true ? "Configured and ready" : "Setup needed", systemImage: "checkmark.shield")
-                Text(model.runtime?.data_path ?? "").font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 26) {
+            heading("Your workspace", "Open your library to read, capture, or find useful context.")
+            card("Active library") {
                 HStack {
-                    Button("Configure workspace") { model.section = "Workspace" }
-                    Button("Open in Obsidian") { model.openVault() }.disabled(!model.initialized)
-                    Button("Show vault in Finder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: model.vault) }.disabled(!model.initialized)
-                }
-            }
-            HStack(alignment: .top, spacing: 18) {
-                card("Build on what you know") {
-                    Text("Turn today's work into tomorrow's runbook. Review suggested skills and break larger workflows into reusable steps.").foregroundStyle(.secondary)
-                    Button("Explore skills") { model.openWeb("/#skills") }.disabled(!model.initialized)
-                }
-                card("No tunnel required") {
-                    Text("Use local assistants or exchange reviewed files with ChatGPT and Claude. Direct cloud access is an optional connection.").foregroundStyle(.secondary)
-                    Button("Open cloud handoff") { model.openWeb("/#handoff") }.disabled(!model.initialized)
-                }
-            }
-            card("Local service") {
-                Text("Closing this window keeps your library and automatic project refresh running. Open Mnemos again to manage it.").foregroundStyle(.secondary)
-                Text("Installation: \(model.installation)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                HStack {
-                    Button("Getting started") { model.openWeb("/#getting-started") }
+                    Label(model.setup?.initialized == true ? "Ready" : "Setup needed", systemImage: "checkmark.circle")
+                        .foregroundStyle(model.setup?.initialized == true ? Color.cyan : Color.orange)
                     Spacer()
-                    Button("Stop local service") { confirmStop = true }.disabled(model.busy || !model.ready || model.runtime?.managed != true)
+                    Text(model.setup?.author ?? "").foregroundStyle(.secondary)
                 }
+                HStack(spacing: 12) {
+                    Button("Open in Obsidian") { model.openVault() }.disabled(!model.initialized)
+                    Button("Workspace settings") { model.section = "Workspace" }
+                }
+                DisclosureGroup("Location & files") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(model.runtime?.data_path ?? "").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        Button("Show vault in Finder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: model.vault) }.disabled(!model.initialized)
+                    }.padding(.top, 12)
+                }.font(.callout).foregroundStyle(.secondary)
             }
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Work with your AI assistant").font(.headline)
+                Text("Use ChatGPT, Claude, or a local agent for the work. Bring the useful context and results back to Mnemos.").foregroundStyle(.secondary)
+                HStack {
+                    Button("Prepare a handoff") { model.openWeb("/#handoff") }.disabled(!model.initialized)
+                    Button("Browse skills") { model.openWeb("/#skills") }.disabled(!model.initialized)
+                }
+            }.padding(.horizontal, 4)
+            Divider()
+            DisclosureGroup("Service & installation") {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("The local service keeps running when you close this window. Stop it to pause the browser library and automatic project refresh.").foregroundStyle(.secondary)
+                    Text(model.installation).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).textSelection(.enabled)
+                    Button("Stop local service") { confirmStop = true }.disabled(model.busy || !model.ready || model.runtime?.managed != true)
+                }.padding(.top, 12)
+            }.font(.callout)
+            Button("Getting started") { model.openWeb("/#getting-started") }.buttonStyle(.link)
         }
     }
     var stopped: some View {
@@ -141,7 +147,7 @@ struct ManagerView: View {
     }
     var workspace: some View {
         VStack(alignment: .leading, spacing: 22) {
-            heading("One active workspace. Your choice.", "Update your current setup, create a separate documentation workspace, or select an existing one.")
+            heading("Workspace settings", "One active workspace. Your other libraries stay intact.")
             card("Workspace setup") {
                 Picker("Action", selection: $model.mode) {
                     if model.setup?.setup_modes?.contains("update") == true { Text("Update current").tag("update") }
@@ -178,7 +184,9 @@ struct ManagerView: View {
                     }
                     Text("This preference does not install skills, authenticate accounts, or start a tunnel. Assistant setup remains an explicit step.").font(.caption).foregroundStyle(.secondary)
                     Divider()
-                    backupFields
+                    if model.mode == "update" {
+                        DisclosureGroup("Backup destination") { backupFields.padding(.top, 12) }
+                    } else { backupFields }
                     Divider()
                     if model.setup?.obsidian.installed == true { Label("Obsidian is installed", systemImage: "checkmark.circle") }
                     else { Toggle("Install Obsidian when saving", isOn: $model.installObsidian) }
@@ -220,7 +228,7 @@ struct ManagerView: View {
     }
     var backups: some View {
         VStack(alignment: .leading, spacing: 22) {
-            heading("Keep a second copy.", "Review your saved destination, create a backup, and see the latest results.")
+            heading("Backups", "Keep a recoverable copy of your library.")
             if model.initialized {
                 card("Saved backup destination") {
                     Text(model.setup?.backup.provider == "local" ? model.setup?.backup.destination ?? "" : model.setup?.backup.remote ?? "").textSelection(.enabled)
@@ -244,7 +252,7 @@ struct ManagerView: View {
     }
     var projects: some View {
         VStack(alignment: .leading, spacing: 22) {
-            heading("Keep project context current.", "Automatic refresh checks local commits about every 60 seconds while the service runs. It does not fetch, pull, or read uncommitted changes.")
+            heading("Projects", "Keep your documentation current with local commits.")
             if model.initialized {
                 if model.projects.isEmpty { card("No projects connected") { Text("Add an existing local Git checkout in the library to start capturing project context.").foregroundStyle(.secondary) } }
                 ForEach(model.projects) { project in
@@ -254,26 +262,31 @@ struct ManagerView: View {
                             .disabled(model.busy)
                     }
                 }
+                Text("Automatic refresh checks local commits about every 60 seconds while the service runs. It does not fetch, pull, or read uncommitted changes.").font(.caption).foregroundStyle(.secondary)
                 Button("Add or manage projects in Library") { model.openWeb("/#projects") }
             } else { Text("Finish Workspace setup to connect projects.") }
         }
     }
     var assistants: some View {
         VStack(alignment: .leading, spacing: 22) {
-            heading("Bring your preferred assistant.", "Local skills and file handoffs work without a tunnel. Use a direct connection when your organization allows it.")
-            card("Choose how context travels") {
-                Text("Local tools: your assistant uses local skills and the Mnemos runtime.\n\nFile handoff: review and attach a context file in ChatGPT or Claude, then import the returned draft. No inbound access or tunnel is needed.\n\nOptional tunnel: a cloud assistant can call your local tools directly while the tunnel runs. It requires account setup, scoped credentials, a running workstation, and enterprise approval where applicable. Connected tools may access drafts in the selected vault.").foregroundStyle(.secondary)
+            heading("Assistants", "Use your existing AI workspace alongside Mnemos.")
+            DisclosureGroup("How Mnemos works with your assistant") {
+                Text("Mnemos stores your documentation. Your existing chat app does the AI work. This is not a chat wrapper.\n\nLocal tools: your assistant uses local skills and the Mnemos runtime.\n\nFile handoff: review and attach a context file in ChatGPT or Claude, then import the returned draft. No inbound access or tunnel is needed.\n\nOptional tunnel: a cloud assistant can call your local tools directly while the tunnel runs. It requires account setup, scoped credentials, a running workstation, and enterprise approval where applicable. Connected tools may access drafts in the selected vault.").foregroundStyle(.secondary)
                 Button("Setup instructions and portable skills") { model.openWeb("/setup.html") }
             }
             if model.initialized {
                 ForEach(model.connections) { connection in
                     card(connection.name) {
                         Text(connection.status.replacingOccurrences(of: "-", with: " ").capitalized).font(.caption.weight(.semibold))
-                        Text(connection.detail).foregroundStyle(.secondary)
-                        if let path = connection.workspace {
-                            Text(path).font(.caption).textSelection(.enabled)
-                            Text(connection.matches_active == true ? "Uses the active workspace" : "Uses a different workspace").font(.caption).foregroundStyle(connection.matches_active == true ? Color.secondary : .orange)
+                        if connection.workspace != nil && connection.matches_active != true {
+                            Label("Uses a different workspace", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                         }
+                        DisclosureGroup("Connection details") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(connection.detail).foregroundStyle(.secondary)
+                                if let path = connection.workspace { Text(path).font(.caption).textSelection(.enabled) }
+                            }.padding(.top, 10)
+                        }.font(.callout)
                         if connection.testable { Button("Test locally") { model.action { try await model.test(connection) } }.disabled(model.busy) }
                     }
                 }

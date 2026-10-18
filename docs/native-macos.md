@@ -1,6 +1,8 @@
-# Native macOS manager (0.8.0)
+# Native macOS manager
 
 Mnemos now includes a real SwiftUI management app alongside its HTML documentation interface. The native window and browser manage the same Python service, workspace selection, and Markdown vault. The Mac bundle includes Python; users do not need Xcode or a Python installation to run it.
+
+Version 0.8.1 simplifies the dashboard and moves occasional controls into expandable sections. See [focused workspace](focused-workspace.md).
 
 ## Use the app
 
@@ -14,7 +16,7 @@ Open **Mnemos.app**. The manager starts its local service when needed. A fresh i
 
 **Open Library** uses your default browser for note editing, search, capture, recall, handoff, skill creation, and workflow planning. The native app is a management companion, not a replacement editor or WebView wrapper. Obsidian continues to provide graph and canvas views of the same vault.
 
-Closing the native window or quitting the manager leaves the service running. Stop it explicitly from Overview or browser Connections. Stopping pauses local HTTP access and project refresh but does not stop independent MCP or tunnel processes. There is no login item or automatic startup at reboot.
+Closing the native window or quitting the manager leaves the service running. Stop it explicitly from Overview → Service & installation or browser Connections. Stopping pauses local HTTP access and project refresh but does not stop independent MCP or tunnel processes. There is no login item or automatic startup at reboot.
 
 The manager remembers the chosen installation in macOS preferences; vault settings remain in the workspace's existing configuration. Packaged defaults live under `~/Library/Application Support/Mnemos/data`. Explicitly pinned assistant connections stay pinned when the default changes. Use Reload after changes from another interface; it replaces unsaved form edits. Configuration writes include workspace and settings revisions, and selecting an existing workspace requires inspecting its settings first. Concurrent changes produce an error instead of overwriting the other window's choices.
 

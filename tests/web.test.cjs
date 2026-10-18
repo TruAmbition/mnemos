@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -537,4 +537,23 @@ test('Blocked browser storage does not break onboarding or explicit links', () =
   assert.doesNotThrow(()=>h.rememberGettingStarted());
   assert.equal(h.firstVisitView('document'),'document');
   delete context.window.localStorage;
+});
+
+
+test('Grouped navigation preserves role boundaries and setup availability', () => {
+  const ids = groups => Object.values(groups).flat().map(item=>item.id);
+  assert.deepEqual(plain(h.navigationGroups(false,false,false,false).primary.map(item=>item.id)), ['library','recall']);
+  assert.deepEqual(plain(h.navigationGroups(false,false,true,false).manage.map(item=>item.id)), ['settings']);
+  assert.ok(!ids(h.navigationGroups(true,false,false,false)).includes('setup'));
+  assert.deepEqual(plain(h.navigationGroups(true,true,false,true).manage.map(item=>item.id)), ['projects','connections','settings','setup']);
+  assert.deepEqual(plain(h.navigationGroups(true,true,false,false).manage.map(item=>item.id)), ['settings']);
+});
+
+test('Focused reading hides only an identical leading title without mutating notes', () => {
+  const doc={title:'Deploy the service',body:'# Deploy the service\n\n## Steps\n1. Verify'};
+  assert.equal(h.readingBody(doc),'\n## Steps\n1. Verify');
+  assert.equal(doc.body,'# Deploy the service\n\n## Steps\n1. Verify');
+  for(const body of ['# Different title\nKeep this','## Deploy the service\nKeep this','Intro\n# Deploy the service','```\n# Deploy the service\n```']) {
+    assert.equal(h.readingBody({title:doc.title,body}),body);
+  }
 });

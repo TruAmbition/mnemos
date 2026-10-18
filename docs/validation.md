@@ -2,6 +2,12 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Focused workspace (0.8.1)
+
+The 48 JavaScript tests passed, including role-scoped grouped navigation and non-mutating duplicate-title rendering. The native SwiftUI target compiled and the Apple Silicon package was rebuilt. Browser checks exercised search and type filtering, full-page reading, returning to retained results with Escape, Focus mode enter/exit, optional capture fields, and a 390px-wide navigation layout without horizontal overflow. The native UI showed the simplified dashboard and expandable service controls against the existing workspace. No note edits were saved during these UI checks.
+
+The underlying Python APIs, storage, and assistant connection contracts are unchanged. The existing platform suites and native API harness continue in CI. Signing and platform limitations from 0.8.0 still apply.
+
 ## Native SwiftUI manager (0.8.0)
 
 On October 18, 2026, the source passed **175 Python tests, 46 JavaScript tests, and 6 Swift tests**. The Swift suite exercised the real source server and the packaged runtime separately with disposable workspaces: create/update/select, retained backups, stale-workspace rejection, and service shutdown. The bundled executable forwarded both CLI and MCP initialization/tool discovery successfully. No private vault was modified in these lifecycle checks.
