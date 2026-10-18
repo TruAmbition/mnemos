@@ -4,7 +4,7 @@ import MnemosKit
 
 struct ManagerView: View {
     @ObservedObject var model: Manager
-    private let sections = [("Overview", "square.grid.2x2"), ("Workspace", "folder"),
+    private let sections = [("Overview", "square.grid.2x2"), ("Knowledge brain", "brain"), ("Workspace", "folder"),
                             ("Backups", "externaldrive.badge.timemachine"), ("Projects", "point.3.connected.trianglepath.dotted"),
                             ("Assistants", "sparkles")]
     @State private var confirmStop = false
@@ -50,6 +50,7 @@ struct ManagerView: View {
                         } else {
                             switch model.section {
                             case "Workspace": workspace
+                            case "Knowledge brain": brain
                             case "Backups": backups
                             case "Projects": projects
                             case "Assistants": assistants
@@ -66,6 +67,15 @@ struct ManagerView: View {
         .confirmationDialog("Activate this workspace?", isPresented: $confirmSwitch, titleVisibility: .visible) {
             Button("Activate workspace") { model.action { try await model.save() } }
         } message: { Text("Only this workspace will be the active default. Existing notes are preserved. Assistant connections pinned to other folders will keep using those folders.") }
+    }
+    var brain: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let url = model.brainURL {
+                KnowledgeBrainView(url: url).frame(minHeight: 720)
+            } else {
+                Text("Start your local service to explore the knowledge brain.").foregroundStyle(.secondary)
+            }
+        }
     }
     func banner(_ text: String, symbol: String, color: Color) -> some View {
         Label(text, systemImage: symbol).font(.callout).textSelection(.enabled).padding(14)

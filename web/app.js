@@ -8,6 +8,7 @@
   const types = {runbook:'Runbook', knowledge:'Knowledge item', troubleshooting:'Troubleshooting', decision:'Decision record', 'work-log':'Work log', microtask:'Microtask', context:'Context', flow:'End-to-end flow', skill:'Skill'};
   const paths = {
     'getting-started':'M4 4h6l2 2 2-2h6v16h-6l-2 2-2-2H4z M12 6v16',
+    graph:'M8 3C2 3 1 10 4 12c-3 5 1 10 6 8V4z M16 3c6 0 7 7 4 9 3 5-1 10-6 8V4z M5 8l5 3 M19 8l-5 3 M5 16l5-2 M19 16l-5-2',
     library:'M3 4h6v7H3z M14 4h7v7h-7z M3 16h6v5H3z M14 16h7v5h-7z',
     search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
     handoff:'M3 7h12 M11 3l4 4-4 4 M21 17H9 M13 13l-4 4 4 4',
@@ -126,6 +127,7 @@
     state.recovery ||= readRecovery();
     try {
       if (!staticMode) await window.mnemosLocalAccess;
+      document.body.classList.toggle('graph-embedded',window.location.search==='?embedded=graph');
       state.data = staticMode ? await (async () => {const result = await fetch('data.json'); if (!result.ok) throw new Error('The preview data could not be loaded.'); return result.json();})() : await api('/api/bootstrap');
       if(state.data.setup_url === '/setup.html'){window.location.assign('/setup.html');return;}
       state.data.documents ||= []; state.data.workflows ||= []; state.data.settings ||= {};
@@ -139,7 +141,7 @@
     }
   }
   function navigationGroups(write, owner, preview, setupAvailable) {
-    const primary=[{id:'library',label:'Library'}, ...(write?[{id:'capture',label:'Capture work'}]:[]),
+    const primary=[{id:'library',label:'Library'},{id:'graph',label:'Knowledge brain'}, ...(write?[{id:'capture',label:'Capture work'}]:[]),
       {id:'recall',label:'Find context'}, ...(write?[{id:'skills',label:'Skills'}]:[])];
     const tools=[{id:'handoff',label:'Use with AI'},{id:'workflows',label:'Workflows'}];
     const manage=[...(owner&&setupAvailable?[{id:'projects',label:'Projects'},{id:'privacy',label:'Privacy & sharing'},{id:'connections',label:'Connections'}]:[]),
@@ -199,7 +201,7 @@
         window.history.replaceState(null, '', '#'+view);
       }
     }
-    const valid = [...(isOwner()&&state.data.setup_available?['connections','projects','privacy']:[]),'getting-started','library','recall','handoff','workflows',...(canWrite()?['capture','skills']:[]),...((isOwner()||staticMode)?['settings']:[])];
+    const valid = [...(isOwner()&&state.data.setup_available?['connections','projects','privacy']:[]),'getting-started','library','graph','recall','handoff','workflows',...(canWrite()?['capture','skills']:[]),...((isOwner()||staticMode)?['settings']:[])];
     state.view = valid.includes(view) ? view : 'library';
     if(['library','skills','recall'].includes(view)&&id&&projectCatalog().some(p=>p.id===id))state.project=id;
     closeOverlay();
@@ -211,17 +213,62 @@
   }
   let projectPollTimer, projectPollGeneration=0;
   function render() {
+    state.graphRenderer?.destroy();state.graphRenderer=null;
     clearTimeout(projectPollTimer);projectPollGeneration++;
     updateChrome();
-    const labels = {privacy:'Privacy & sharing','getting-started':'Getting started',skills:'Available skills',projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
+    if($('#brain-return'))$('#brain-return').hidden=window.location.search!=='?embedded=graph'||state.view==='graph';
+    const labels = {graph:'Knowledge brain',privacy:'Privacy & sharing','getting-started':'Getting started',skills:'Available skills',projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
     document.title = `${labels[state.view]} · Mnemos`;
     if (role()==='anonymous'&&state.view!=='getting-started') { renderLocked(); updateWorkspaceNotice(); return; }
-    ({privacy:renderPrivacy,'getting-started':renderGettingStarted,skills:renderSkills,projects:renderProjects,connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
+    ({graph:renderGraph,privacy:renderPrivacy,'getting-started':renderGettingStarted,skills:renderSkills,projects:renderProjects,connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
     updateWorkspaceNotice();
   }
   function heading(eyebrow, title, description, action='') {
     return `<div class="page-heading"><div><span class="eyebrow">${escape(eyebrow)}</span><h1>${escape(title)}</h1><p>${escape(description)}</p></div>${action}</div>`;
+  }
+  async function renderGraph(){
+    $('#main').innerHTML=heading('CONNECTED KNOWLEDGE','Your engineering brain.','Explore the same notes you open in Obsidian, plus recorded project, repository, workflow, and skill relationships.', '<button class="button small" id="graph-refresh">Refresh graph</button>')+`<section class="brain-controls"><div class="field"><label for="brain-query">Find knowledge</label><input id="brain-query" type="search" placeholder="Search nodes and summaries"></div><div class="field"><label for="brain-project">Project</label><select id="brain-project"><option value="all">All projects</option></select></div><div class="field"><label for="brain-kind">Node type</label><select id="brain-kind"><option value="all">All types</option></select></div><div class="field"><label for="brain-layout">Layout</label><select id="brain-layout"><option value="brain">Brain</option><option value="network">Network</option></select></div></section><div id="brain-message" role="status"></div><div class="brain-workspace"><section class="brain-surface"><header><span id="brain-count">Loading your knowledge…</span><div class="brain-tools"><button id="brain-zoom-out" aria-label="Zoom out">−</button><button id="brain-reset">Fit view</button><button id="brain-zoom-in" aria-label="Zoom in">+</button></div></header><div id="brain-stage"></div><footer>Drag the background to move · Scroll to zoom · Select an orb to explore</footer></section><aside class="brain-inspector"><div class="field"><label for="brain-node-picker">Select a node</label><select id="brain-node-picker"><option value="">Choose an orb or a name</option></select></div><div id="brain-details"><h2>Every connection has a source.</h2><p>Select a glowing orb to see what it represents, open its documentation, and explore its neighbors.</p><p>Large orbs are project/repository hubs or have more recorded connections. Size does not indicate AI confidence.</p></div><div class="brain-options"><label><input id="brain-labels" type="checkbox"> Show every label</label><label><input id="brain-neighborhood" type="checkbox"> Focus on selected neighbors</label><label for="brain-size">Orb size</label><input id="brain-size" type="range" min="0.7" max="1.5" step="0.1" value="1"></div><details open><summary>Color key</summary><div id="brain-legend"></div></details></aside></div><p class="connection-help">The brain silhouette is a visual layout. Lines represent recorded note links, sources, memberships, and workflow steps—not relationships invented by AI. This is Mnemos’s renderer; Obsidian’s graph settings and node positions remain separate. Installed third-party skills appear only after being documented in your vault; built Mnemos skills appear for the local owner.</p>`;
+    $('#graph-refresh').addEventListener('click',renderGraph);
+    try{
+      const result=staticMode?(state.data.graph||{nodes:[],edges:[]}):await api('/api/graph');
+      if(state.view!=='graph'||!$('#brain-stage'))return;
+      state.graphData=result;state.graphSelected=null;state.graphFocus=null;
+      for(const p of result.nodes.filter(n=>n.kind==='project'))$('#brain-project').insertAdjacentHTML('beforeend',`<option value="${escape(p.project_id||p.project_ids[0])}">${escape(p.label)}</option>`);
+      for(const kind of [...new Set(result.nodes.map(n=>n.kind))].sort()){
+        const [label,color]=window.MnemosBrain.style(kind);
+        $('#brain-kind').insertAdjacentHTML('beforeend',`<option value="${escape(kind)}">${escape(label)}</option>`);
+        $('#brain-legend').insertAdjacentHTML('beforeend',`<span><i style="background:${color}"></i>${escape(label)}</span>`);
+      }
+      $('#brain-query').addEventListener('input',()=>{clearTimeout(state.graphSearchTimer);state.graphSearchTimer=setTimeout(drawGraph,150);});
+      for(const id of ['brain-project','brain-kind','brain-layout','brain-labels','brain-size'])$('#'+id).addEventListener('change',drawGraph);
+      $('#brain-neighborhood').addEventListener('change',event=>{if(event.target.checked&&!state.graphSelected){event.target.checked=false;toast('Select a node first.');return;}state.graphFocus=event.target.checked?state.graphSelected:null;drawGraph();});
+      $('#brain-node-picker').addEventListener('change',event=>selectGraphNode(event.target.value));
+      $('#brain-zoom-in').addEventListener('click',()=>state.graphRenderer?.zoomIn());$('#brain-zoom-out').addEventListener('click',()=>state.graphRenderer?.zoomOut());$('#brain-reset').addEventListener('click',()=>state.graphRenderer?.reset());
+      drawGraph();
+    }catch(error){if($('#brain-message'))$('#brain-message').innerHTML=notice(error.message,'error');}
+  }
+  function drawGraph(){
+    if(state.view!=='graph'||!$('#brain-stage')||!state.graphData)return;
+    const graph=window.MnemosBrain.filter(state.graphData,{query:$('#brain-query').value,project:$('#brain-project').value,kind:$('#brain-kind').value,focus:state.graphFocus});
+    state.graphVisible=graph;
+    $('#brain-count').textContent=`${graph.nodes.length} orbs · ${graph.edges.length} recorded connections`;
+    $('#brain-message').innerHTML=graph.limited?notice(`Showing ${graph.nodes.length} of ${graph.total} matching nodes. Narrow the project, type, or search to explore the rest.`):'';
+    $('#brain-node-picker').innerHTML='<option value="">Choose an orb or a name</option>'+graph.nodes.slice().sort((a,b)=>a.label.localeCompare(b.label)).map(n=>`<option value="${escape(n.id)}">${escape(n.label)} · ${escape(window.MnemosBrain.style(n.kind)[0])}</option>`).join('');
+    state.graphRenderer?.destroy();
+    state.graphRenderer=window.MnemosBrain.mount($('#brain-stage'),graph,{mode:$('#brain-layout').value,labels:$('#brain-labels').checked,size:Number($('#brain-size').value),selected:state.graphSelected,onSelect:selectGraphNode});
+    if(!graph.nodes.length)$('#brain-message').innerHTML=notice(state.graphData.nodes.length?'No nodes match these filters. Clear the search or choose another type.':'Your brain will grow with your knowledge. Capture a note or add a project to begin.');
+    if(graph.nodes.some(n=>n.id===state.graphSelected))selectGraphNode(state.graphSelected);
+    else{state.graphSelected=null;$('#brain-details').innerHTML='<h2>Explore a connection.</h2><p>Select an orb or choose its name above. Larger orbs represent hubs and more connected knowledge.</p>';}
+  }
+  function selectGraphNode(id){
+    const n=state.graphVisible?.nodes.find(n=>n.id===id);if(!n)return;
+    if(state.graphFocus&&state.graphFocus!==id){state.graphFocus=id;state.graphSelected=id;drawGraph();return;}
+    state.graphSelected=id;state.graphRenderer?.select(id);$('#brain-node-picker').value=id;
+    const edges=state.graphData.edges.filter(e=>e.source===id||e.target===id), byId=new Map(state.graphData.nodes.map(n=>[n.id,n]));
+    const action=n.document_id?`<button class="button primary" data-document="${escape(n.document_id)}">Open documentation</button>`:n.built_id?`<button class="button primary" data-action="view-built-skill" data-build-id="${escape(n.built_id)}">Inspect built skill</button>`:n.kind==='project'?`<a class="button" href="#library/${encodeURIComponent(n.project_id)}">Browse project notes</a>`:n.kind==='repository'?'<a class="button" href="#projects">Open Projects</a>':n.workflow_id?'<a class="button" href="#workflows">Open Workflows</a>':'';
+    $('#brain-details').innerHTML=`<span class="eyebrow">${escape(window.MnemosBrain.style(n.kind)[0])}</span><h2>${escape(n.label)}</h2><p>${escape(n.summary||'A recorded part of your engineering knowledge.')}</p>${n.status?statusBadge(n.status):''}<p>${Number(n.connections||0)} connected neighbors${n.example?' · Bundled example':''}${n.target?' · '+escape(n.target):''}</p>${action}<h3>Recorded relationships</h3><div class="brain-neighbors">${edges.length?edges.slice(0,80).map(e=>{const other=byId.get(e.source===id?e.target:e.source);return `<div><small>${escape(e.relation)}${e.target===id?' ←':' →'}</small><button type="button" data-brain-neighbor="${escape(other.id)}">${escape(other.label)}</button></div>`;}).join(''):'<p>No recorded links yet. Add related notes or project membership to connect this knowledge.</p>'}</div>`;
+    $$('[data-brain-neighbor]',$('#brain-details')).forEach(button=>button.addEventListener('click',()=>{const next=button.dataset.brainNeighbor;if(state.graphVisible.nodes.some(n=>n.id===next)){selectGraphNode(next);}else{toast('That neighbor is outside the current filters. Clear filters to explore it.');}}));
   }
   function renderGettingStarted() {
     rememberGettingStarted();

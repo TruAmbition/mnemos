@@ -194,6 +194,13 @@ import MnemosKit
         let bytes = try await mutate("/api/connections/test", ["client": connection.id])
         connections = try JSONDecoder().decode(Connections.self, from: bytes).connections
     }
+    var brainURL: URL? {
+        guard ownsService, let key = api.localKey else { return nil }
+        var url = URLComponents(string: api.base.absoluteString)!
+        url.queryItems = [URLQueryItem(name: "embedded", value: "graph")]
+        url.fragment = "local-access=" + key + "&route=graph"
+        return url.url
+    }
     func openWeb(_ route: String = "") {
         guard ownsService, let key = api.localKey else { return }
         let parts = route.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)

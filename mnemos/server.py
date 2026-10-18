@@ -470,6 +470,10 @@ class Handler(BaseHTTPRequestHandler):
         else:
             identity = self._identity()
         role, data = identity["role"], self.server.data_path
+        if method == "GET" and path == "/api/graph":
+            self._require(identity, {"owner", "author", "reader"})
+            from . import graph
+            return self._json(graph.build(data, role, local=bool(identity.get('local'))))
         if method == "GET" and path == "/api/bootstrap":
             from .knowledge_projects import catalog
             return self._json({"app": {"name": "Mnemos", "version": __version__}, "session": identity,

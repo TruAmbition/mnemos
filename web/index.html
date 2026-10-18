@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="local-access.js" defer></script>
   <script src="config.js"></script>
+  <script src="brain.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -24,6 +25,7 @@
     </aside>
     <div class="workspace">
       <header class="topbar"><div class="breadcrumb"><span class="breadcrumb-mark" aria-hidden="true">◇</span><span>Workspace</span><span class="slash">/</span><strong id="breadcrumb-view">Library</strong></div><div class="account-controls"><button id="focus-button" class="button small focus-button" type="button" data-action="toggle-focus" aria-pressed="false" title="Hide navigation while you work">Focus</button><span id="preview-badge" class="preview-badge" hidden>Reader preview · sample library</span><button id="account-button" class="account-button" type="button"><span id="account-avatar" class="avatar">R</span><span id="account-role">Reader</span></button></div></header>
+      <a id="brain-return" class="button brain-return" href="#graph" hidden>← Back to knowledge brain</a>
       <main id="main" tabindex="-1"><div class="initial-loading"><span class="loader"></span><h1>Opening your knowledge vault</h1><p>Bringing your documentation together.</p></div></main>
       <footer class="page-footer"><span>Mnemos</span><span id="footer-version">Your knowledge, in your hands.</span></footer>
     </div>

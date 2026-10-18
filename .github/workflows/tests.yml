@@ -32,6 +32,6 @@ jobs:
         with:
           node-version: '22'
       - name: Test browser helpers
-        run: node --test tests/web.test.cjs
+        run: node --test tests/*.test.cjs
 
 # This workflow tests the toolkit only. It does not publish private vault data.

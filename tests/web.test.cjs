@@ -542,7 +542,7 @@ test('Blocked browser storage does not break onboarding or explicit links', () =
 
 test('Grouped navigation preserves role boundaries and setup availability', () => {
   const ids = groups => Object.values(groups).flat().map(item=>item.id);
-  assert.deepEqual(plain(h.navigationGroups(false,false,false,false).primary.map(item=>item.id)), ['library','recall']);
+  assert.deepEqual(plain(h.navigationGroups(false,false,false,false).primary.map(item=>item.id)), ['library','graph','recall']);
   assert.deepEqual(plain(h.navigationGroups(false,false,true,false).manage.map(item=>item.id)), ['settings']);
   assert.ok(!ids(h.navigationGroups(true,false,false,false)).includes('setup'));
   assert.deepEqual(plain(h.navigationGroups(true,true,false,true).manage.map(item=>item.id)), ['projects','privacy','connections','settings','setup']);
@@ -589,18 +589,20 @@ test('Privacy choices default to local and explain AI review separately from tea
   assert.doesNotMatch(team,/value="local" checked/);
 });
 
-test('Launcher credential is exchanged then removed without query or localStorage persistence', async () => {
+test('Launcher removes credentials and preserves only the embedded graph presentation option', async () => {
+  for(const search of ['', '?embedded=graph', '?key=never-persist']) {
   const events=[];
-  const sandbox={window:{},URLSearchParams,location:{hash:'#local-access=synthetic-test&route=privacy',pathname:'/'},
+  const sandbox={window:{},URLSearchParams,location:{hash:'#local-access=synthetic-test&route=privacy',pathname:'/',search},
     history:{replaceState(_s,_t,path){events.push(['history',path]);}},
     fetch:async (path, options)=>{events.push(['fetch',path,options]);return {ok:true};}};
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../web/local-access.js'),'utf8'),sandbox);
   await sandbox.window.mnemosLocalAccess;
-  assert.deepEqual(events[0],['history','/#privacy']);
+  assert.deepEqual(events[0],['history','/'+(search==='?embedded=graph'?search:'')+'#privacy']);
   assert.equal(events[1][1],'/api/local-login');
   assert.equal(events[1][2].method,'POST');
   assert.equal(JSON.parse(events[1][2].body).key,'synthetic-test');
+  }
 });
 
 

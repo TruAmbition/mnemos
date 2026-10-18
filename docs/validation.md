@@ -2,6 +2,16 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Knowledge brain (0.12.0)
+
+The source passed **216 Python tests and 60 JavaScript tests** on macOS. Added coverage exercises explicit graph relationships, unambiguous link resolution, source/workflow/skill edges, hidden-note and local-metadata boundaries, node filtering, deterministic bounded layout, colors and size caps, and embedded-view credential cleanup. The graph tests also reject code/comment link examples. Existing authentication semantics remain unchanged.
+
+An isolated browser workspace with synthetic notes verified the brain layout, orb selection, recorded relationships, type and neighborhood filters, zoom/reset, and opening documentation. The embedded route preserved its presentation option across local authentication, hid duplicate browser navigation, and returned from project notes to the brain. Screenshots use demonstration data, not the user's private notes. No AI inference or workflow execution was involved.
+
+The Apple Silicon 0.12.0 app compiled and the packaged runtime passed all **6 Swift lifecycle/API tests**, CLI forwarding, and MCP initialization/tool discovery. App signature and DMG integrity verification passed; bundled HTML, JavaScript, and CSS matched current source. Native WebKit code was compiled and its embedded web route tested in the browser; a separate native-window visual pass was not performed for this release. The app remains ad-hoc signed and unnotarized. Windows/Linux and older macOS packaged artifacts were not exercised locally.
+
+The existing local service was upgraded on the same workspace and retained its 13 notes. Its authenticated graph returned 14 nodes and 46 recorded relationships. The graph did not modify notes, enable repository capture, or change sharing settings.
+
 ## Focused workspace (0.8.1)
 
 The 48 JavaScript tests passed, including role-scoped grouped navigation and non-mutating duplicate-title rendering. The native SwiftUI target compiled and the Apple Silicon package was rebuilt. Browser checks exercised search and type filtering, full-page reading, returning to retained results with Escape, Focus mode enter/exit, optional capture fields, and a 390px-wide navigation layout without horizontal overflow. The native UI showed the simplified dashboard and expandable service controls against the existing workspace. No note edits were saved during these UI checks.

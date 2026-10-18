@@ -30,6 +30,8 @@ def build_reader(data_path, output):
     payload = {'knowledge_projects': catalog(data_path, 'reader', documents), 'app': {'name': 'Mnemos', 'version': __version__}, 'session': {'role': 'reader', 'author': 'Reader'},
                'documents': documents, 'workflows': workflows,
                'settings': {}, 'static': True, 'sample': all(d.get('example') for d in documents)}
+    from .graph import assemble
+    payload['graph'] = assemble(documents, payload['knowledge_projects'], workflows=workflows)
     output.mkdir(parents=True, exist_ok=True)
     web = Path(__file__).resolve().parents[1] / 'web'
     for source in web.iterdir():

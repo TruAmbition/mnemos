@@ -62,6 +62,15 @@ class ServerTests(unittest.TestCase):
     def token(self, role):
         return core.issue_token(self.data, role, role.title(), 'team')
 
+    def test_graph_respects_session_scope(self):
+        result=self.request(path='/api/graph')
+        self.assertEqual(result[0],200)
+        self.assertTrue(result[2]['nodes'])
+        result=self.request(path='/api/graph',headers={'Authorization':'Bearer '+self.token('reader')})
+        self.assertEqual(result[0],200)
+        self.assertEqual([n['id'] for n in result[2]['nodes']],['note:approved'])
+        self.assertEqual(self.request(path='/api/graph',headers={'Authorization':'Bearer invalid'})[0],401)
+
     def test_git_backup_requires_local_owner_and_workspace_guard(self):
         self.assertEqual(self.request(path='/api/git-backup')[0], 200)
         for endpoint in ['/api/git-backup', '/api/git-backup/sync']:
