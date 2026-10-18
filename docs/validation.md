@@ -142,3 +142,7 @@ Validation on Apple Silicon macOS: 183 Python tests, 51 JavaScript tests, and 6 
 199 Python tests, 53 browser-helper tests, and six native Swift tests pass locally. Security tests cover default denial; separate AI/team audiences; transitive and shared-repository restrictions; stale/revoked approvals; new captured commits; blocked immutable skill downloads; credential scanning; static readers; unknown attachments; cloud backup denial; local login, cookie flags, Host/Origin guards, and owner-token management denial. Tests use isolated synthetic workspaces.
 
 Browser verification exercised the three-policy project editor and explicit note approval. No real project or note was approved for sharing during verification. The package remains ad-hoc signed and unnotarized.
+
+## Git remote documentation backup (0.11.0)
+
+The regression suite now contains 210 Python tests and 55 browser-helper tests; all pass, along with six native Swift tests. New tests cover isolated local Git commits, unchanged snapshots, private-history denial, failed transport preserving commits, modified remote detection, existing checkout protection, path validation, opt-in scheduling, three-color status, and local-owner/workspace API guards. Successful and failed remote transport responses are simulated in tests; no customer documentation is uploaded. Git host authentication and live remote availability must be verified in the user's environment.

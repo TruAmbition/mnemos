@@ -220,3 +220,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:600px) { .privacy-note { align-items:flex-start; flex-direction:column; } }
 
 .privacy-review-content { max-height:42vh; overflow:auto; padding:18px; border:1px solid var(--border); border-radius:10px; margin:18px 0; }
+
+/* Git remote backup uses text as well as color. */
+.git-backup-status{display:flex;align-items:center;gap:10px;margin:18px 0 8px;line-height:1.6}
+.git-backup-status i{width:12px;height:12px;border-radius:50%;flex:none;background:#e55b69;box-shadow:0 0 0 4px #e55b6918}
+.git-backup-status.git-green i{background:#41cf91;box-shadow:0 0 0 4px #41cf9118}
+#git-backup-form{max-width:850px}#git-backup-form .form-actions{flex-wrap:wrap;justify-content:flex-start;gap:10px}#git-backup-form small{display:block;color:var(--muted);line-height:1.7}#git-backup-form details{margin:24px 0;line-height:1.8}
+
+.git-backup-status.git-amber i{background:#efb64b;box-shadow:0 0 0 4px #efb64b18}

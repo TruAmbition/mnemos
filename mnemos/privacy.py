@@ -215,7 +215,7 @@ def update(data, payload):
         return {'updated': doc['id']}
 
 
-def full_export(data):
+def full_export(data, *, included_paths=None):
     """Full vault bundles cannot selectively omit maps, attachments, or definitions."""
     from .knowledge_projects import entries
     with audience('local'):
@@ -229,6 +229,8 @@ def full_export(data):
         if path.is_file():
             core.safe_path(core.vault_path(data), path.relative_to(core.vault_path(data)))
             relative = path.relative_to(core.vault_path(data)).as_posix()
+            if included_paths is not None and relative not in included_paths:
+                continue
             known = relative in known_notes or relative in {'Projects/projects.json', 'Projects/privacy.json'}
             if relative.startswith('Maps/') and path.suffix == '.canvas' and path.stem in known_ids:
                 canvas = json.loads(path.read_text())

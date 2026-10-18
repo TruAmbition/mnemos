@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, inProject, knowledgeProjectCard, privacyChoices, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, analysisReview, localSkillCards, skillMatchesView, skillMatchPrompt, firstVisitView, rememberGettingStarted, navigationGroups, readingBody, inProject, knowledgeProjectCard, privacyChoices, gitBackupStatus, gitBackupForm, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -601,4 +601,21 @@ test('Launcher credential is exchanged then removed without query or localStorag
   assert.equal(events[1][1],'/api/local-login');
   assert.equal(events[1][2].method,'POST');
   assert.equal(JSON.parse(events[1][2].body).key,'synthetic-test');
+});
+
+
+test('Git remote status distinguishes red, amber, and confirmed green',()=>{
+  assert.match(h.gitBackupStatus({color:'amber',label:'Local Git'}), /git-amber/);
+  assert.match(h.gitBackupStatus({color:'green',label:'Pushed'}), /git-green/);
+  assert.match(h.gitBackupStatus({state:'pushed',label:'Configured'}), /git-red/);
+  assert.match(h.gitBackupStatus({color:'red',label:'<script>secret</script>'}), /&lt;script&gt;/);
+  assert.match(h.gitBackupStatus({}), /Local-only use is still supported/);
+});
+test('Git backup settings describe history, opt-in automation, and private credentials',()=>{
+  const form=h.gitBackupForm({settings:{}});
+  assert.match(form, /Git remote URL/);assert.match(form,/full Git history/);
+  assert.match(form,/no Git|Git authentication/);assert.match(form,/five minutes/);
+  assert.match(form,/id="git-push-now" disabled/);
+  assert.ok(!/name="auto_push" checked/.test(form));
+  assert.match(form,/Saving alone never uploads/);
 });

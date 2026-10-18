@@ -232,6 +232,16 @@ struct ManagerView: View {
         VStack(alignment: .leading, spacing: 22) {
             heading("Backups", "Keep a recoverable copy of your library.")
             if model.initialized {
+                card("Git remote") {
+                    HStack {
+                        Circle().fill(model.gitBackup?.color == "green" ? Color.green : model.gitBackup?.color == "amber" ? Color.orange : Color.red).frame(width: 12, height: 12)
+                        Text(model.gitBackup?.label ?? "Git remote backup not confirmed")
+                    }
+                    Text("Red: no Git repository or backup needs attention. Amber: local Git only or changes await a push. Green: latest documentation pushed successfully. Local-only use is supported.").font(.caption).foregroundStyle(.secondary)
+                    if let pushed = model.gitBackup?.last_push { Text("Last successful push: " + pushed).font(.caption) }
+                    Button("Configure Git remote & backup") { model.openWeb("#settings") }
+                    Text("Choose or create a dedicated documentation repository, configure its remote, and optionally enable automatic commits and pushes.").font(.caption).foregroundStyle(.secondary)
+                }
                 card("Saved backup destination") {
                     Text(model.setup?.backup.provider == "local" ? model.setup?.backup.destination ?? "" : model.setup?.backup.remote ?? "").textSelection(.enabled)
                     HStack {

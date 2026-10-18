@@ -61,6 +61,8 @@ class MnemosServer(ThreadingHTTPServer):
         self.stopping = False
         from .project_monitor import ProjectMonitor
         self.project_monitor = ProjectMonitor(self)
+        from .git_backup import GitBackupMonitor
+        self.git_backup_monitor = GitBackupMonitor(self)
         self.session_lock = threading.RLock()
         super().__init__(address, handler or Handler)
         port = self.server_address[1]
@@ -85,19 +87,24 @@ class MnemosServer(ThreadingHTTPServer):
 
     def serve_forever(self, poll_interval=0.5):
         self.project_monitor.start()
+        self.git_backup_monitor.start()
         try:
             return super().serve_forever(poll_interval)
         finally:
             self.project_monitor.stop()
+            self.git_backup_monitor.stop()
 
     def shutdown(self):
         # Wait for an in-flight capture before acknowledging service shutdown.
         with self.workspace_lock:
             self.stopping = True
             self.project_monitor.stop()
+            self.git_backup_monitor.stop()
         return super().shutdown()
 
     def server_close(self):
+        if hasattr(self, 'git_backup_monitor'):
+            self.git_backup_monitor.stop()
         if hasattr(self, 'project_monitor'):
             with self.workspace_lock:
                 self.project_monitor.stop()
@@ -367,6 +374,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._routes(method, parsed, path)
 
     def _routes(self, method, parsed, path):
+        if path.startswith('/api/git-backup'):
+            self._require_local_setup()
+            from . import git_backup
+            data = self.server.data_path
+            if path == '/api/git-backup' and method == 'GET':
+                return self._json(git_backup.status(data))
+            if method == 'POST':
+                payload = self._body()
+                if path == '/api/git-backup':
+                    return self._json(git_backup.configure(data, payload))
+                if path == '/api/git-backup/sync':
+                    return self._json(git_backup.sync(data, push=payload.get('push') is True))
+            raise core.MnemosError('Unsupported Git backup operation.', 405)
         if path == '/api/privacy/check' and method == 'POST':
             self._require_local_setup()
             from . import privacy

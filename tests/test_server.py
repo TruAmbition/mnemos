@@ -62,6 +62,16 @@ class ServerTests(unittest.TestCase):
     def token(self, role):
         return core.issue_token(self.data, role, role.title(), 'team')
 
+    def test_git_backup_requires_local_owner_and_workspace_guard(self):
+        self.assertEqual(self.request(path='/api/git-backup')[0], 200)
+        for endpoint in ['/api/git-backup', '/api/git-backup/sync']:
+            self.assertEqual(self.request('POST', endpoint, {}, {'X-Mnemos-Workspace': 'stale'})[0], 409)
+            self.assertEqual(self.request('POST', endpoint, {}, {'Origin': 'https://elsewhere.invalid'})[0], 403)
+            for role in ['owner', 'author', 'reader']:
+                self.assertEqual(self.request('POST', endpoint, {}, {'Authorization': 'Bearer ' + self.token(role)})[0], 403)
+        self.server.setup_enabled = False
+        self.assertEqual(self.request(path='/api/git-backup')[0], 403)
+
     def test_connection_dashboard_is_local_owner_only(self):
         from unittest.mock import patch
         from mnemos import connections

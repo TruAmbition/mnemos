@@ -131,3 +131,5 @@ public final class LocalAPI {
         try JSONDecoder().decode(T.self, from: await data(path))
     }
 }
+
+public struct GitBackupStatus: Decodable { public let color: String; public let label: String; public let last_push: String? }

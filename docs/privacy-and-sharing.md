@@ -51,3 +51,7 @@ Notes, privacy records, maps, and local ZIP backups are not encrypted by Mnemos.
 Secret screening checks common tokens, private-key headers, credential assignments, and all strings/metadata in outgoing records. It is best effort, can produce false positives, and does not recognize every secret or confidential business fact. Review before approval; redact at the source. Mnemos does not add an override to bypass a detected credential.
 
 Disconnecting repositories or removing project groupings preserves notes, generated artifacts, and backup history. It does not revoke external copies or inherit GitHub organization permissions. Removing GitHub access will not erase captured documentation. The reconstruction prompt and release packages must contain source and synthetic fixtures only; private runtime keys, vaults, and approval records are excluded.
+
+## Git documentation backups
+
+Optional documentation Git backups preserve local history without changing project checkouts. Local snapshots may include private content. Remote pushes are external full-vault sharing and require the applicable team classification and secret checks, including historical contents. A snapshot captured while sharing was blocked remains local-only in that repository. Saving a remote URL never uploads content. See [Git documentation backup settings and recovery](git-documentation-backup.md).
