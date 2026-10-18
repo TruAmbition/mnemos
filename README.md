@@ -4,6 +4,8 @@
 
 Start as one author with a team of readers. Add named author credentials when more engineers contribute. Markdown stays the source of truth, so the knowledge remains useful outside this application.
 
+New here? Open **Getting started** in the app sidebar for an introduction, a first-task walkthrough, and copyable capture prompts. You can return to it at any time from the Library.
+
 ## Included in this version
 
 - A Projects registry for local Git checkouts, with selected documentation, optional automatic refresh, source revisions, and preserved snapshot history.
