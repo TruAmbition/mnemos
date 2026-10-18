@@ -1,6 +1,16 @@
-# Version 0.5.1 validation
+# Version 0.6.0 validation
 
 Validated on October 17, 2026, on macOS. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
+
+## Available skills (0.6)
+
+The complete source passed **159 Python tests and 41 JavaScript tests**. New checks cover procedural discovery, examples/draft/archive distinctions, exact source copies, preview/save revision conflicts, external source edits during generation, immutable build history, source freshness, dependency ordering and approval checkpoints, secret-pattern refusal, size and path limits, CLI export, reader/author boundaries, cross-origin and stale-workspace rejection, and escaped UI output. The two generated target packages and the updated bundled build-skill instructions passed the official skill-creator validator; validation used an isolated development dependency and did not add a runtime requirement.
+
+In a separate browser test workspace, a synthetic runbook was selected, previewed for Claude, saved, and downloaded as a three-file ZIP whose contents were inspected. Editing its source then showed “Sources changed — rebuild recommended.” The ChatGPT preview showed local installation and portable cloud handoff guidance. No package was uploaded or installed into an assistant account, and no operational execution of a generated skill is claimed.
+
+The user's source portal was restarted on the same workspace and displayed two suggestions from existing notes. No user notes were changed or skills automatically saved. The separate tunnel was left running. The midnight/violet/cyan identity appears in the portal and setup page; the duplicate legacy favicon was removed.
+
+The Apple Silicon 0.6 app and DMG were built. Its bundled CLI successfully initialized an isolated workspace, discovered suggestions, previewed and saved a skill, and exported the ZIP. The app version and packaged icon matched the release assets. It remains ad-hoc signed, not notarized; Windows/Linux builds were not exercised locally.
 
 ## Visual identity (0.5.1)
 

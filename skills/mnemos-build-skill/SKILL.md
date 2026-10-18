@@ -13,6 +13,12 @@ Search Mnemos and read relevant current documents with their IDs and revisions w
 
 Bundled example notes demonstrate structure. They are not evidence of a completed task in the user's infrastructure.
 
+## Discover documented candidates
+
+When the authorized local Mnemos CLI is available, `python3 -m mnemos skill-candidates` lists procedural notes and valid dependency workflows. Add task keywords to narrow it; `--include-examples` includes clearly labeled synthetic examples. A suggestion is structural evidence, not a claim that the work is tested or frequently repeated. Otherwise use accessible document search or the supplied pack.
+
+The local portal's **Available skills** page offers source review, target selection, preview, and saved ZIP/Markdown exports. Source changes require a new preview. For CLI generation, `skill-build --file settings.json` previews candidate ID/revision, target (`chatgpt` or `claude`), name, and description; `--save` requires the returned `preview_revision`. `skill-export --id BUILD_ID --output NEW_FILE.zip` exports the saved package; `--handoff` exports Markdown. Use a known runtime path and explicit `--data` when the target workspace is not the selected default. Do not infer that a cloud chat can run these commands on the user's computer.
+
 ## Create the artifact
 
 Use a short lowercase hyphenated folder name and a `SKILL.md` with `name` and `description` frontmatter. The description should say what the skill does and when to use it. Keep the main instructions short and move substantial command details or schemas to linked references only when useful.

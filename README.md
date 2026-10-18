@@ -11,6 +11,7 @@ Start as one author with a team of readers. Add named author credentials when mo
 - A local connection dashboard with workspace targets, mismatch notices, local tests, and service stop controls.
 - A searchable web library with document types, project filters, and draft/verified status.
 - A separate Obsidian vault containing runbooks, knowledge items, troubleshooting, decisions, work logs, microtasks, and context handoffs.
+- An Available skills page that suggests documented procedures, previews ChatGPT/Claude packages, and tracks changed sources.
 - Five reusable assistant skills for capture, recall, file handoffs, workflow planning, and building new skills from documentation.
 - Local MCP tools for compatible assistants, plus a cloud handoff page for exchanging reviewed context files without a tunnel.
 - A CLI for capture, search, context recall, skill export, and dependency planning.
@@ -22,9 +23,9 @@ The application uses Python's standard library. It does not require a model API 
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.5.1 reconstruction prompt](prompts/rebuild-mnemos-v0.5.1.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with automatic project refresh and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.6.0 reconstruction prompt](prompts/rebuild-mnemos-v0.6.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with Available skills, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
-The file is approximately 709 KiB because it carries the source itself, including the historical 0.3.0 prompt. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
+The file carries the application source itself. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
 The frozen archive excludes private notes, credentials, machine configuration, Git history, and the reconstruction-prompt directory (to avoid recursively embedding older payloads). Its manifest verifies integrity, not publisher identity: use a trusted copy. Recover into a new folder to preserve existing installations. Historical prompts are retained in the repository but are not included in the new source capsule. The [0.3.0 prompt](prompts/rebuild-mnemos-v0.3.0.md) remains available for the pre-Projects baseline.
 
@@ -92,6 +93,12 @@ python3 -m mnemos recall "deployment" --budget 6000
 See the [capture format](skills/mnemos-capture/references/capture-format.md). Existing-document updates require their current revision. Recall returns a bounded context bundle with source IDs and revisions; the budget is characters, not tokens. The token estimate is approximate. Search and recall currently use keywords.
 
 Mnemos does not automatically access every previous conversation or monitor all work. Export only the relevant accessible evidence; missing facts stay unknown. Use the [file handoff](docs/cloud-handoff.md) when a cloud chat has no vault connection. Review company policies before uploading source files. Optional existing [Secure MCP Tunnel](docs/chatgpt-tunnel.md) and [GPT Actions](docs/cloud-chatgpt.md) integrations remain available; they are separate from ordinary local setup.
+
+## Build reusable skills
+
+Open **Available skills** to find procedures and dependency-based workflows in your documentation. Review the listed sources, choose **Build skill**, select ChatGPT or Claude, adjust the name and trigger description, then preview and save. Download a skill ZIP or a single Markdown handoff for a cloud chat. Saved builds show when their sources have changed.
+
+Suggestions use document types and procedure structure; they do not infer usage frequency or certify a workflow. Drafts need review, bundled examples are hidden by default, and generated skills need testing in the target assistant. Building and using file handoffs needs no tunnel. See [Available skills](docs/available-skills.md) for target-specific setup, CLI use, and limits.
 
 ## Connect your assistant
 

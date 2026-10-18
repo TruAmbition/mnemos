@@ -409,6 +409,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True}, cookie="mnemos_session=logged-out; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200")
         if path.startswith("/api/"):
             self._require(identity, {"owner", "author", "reader"})
+        if path in {'/api/skill-candidates','/api/skill-builds','/api/skill-preview'} or path.startswith('/api/skill-builds/'):
+            self._require(identity, {'owner','author'})
+            from . import skill_builder
+            if path == '/api/skill-candidates' and method == 'GET':
+                params=parse_qs(parsed.query)
+                return self._json(skill_builder.candidates(data,params.get('query',[''])[0],params.get('examples',['0'])[0]=='1'))
+            if path == '/api/skill-preview' and method == 'POST':
+                return self._json(skill_builder.prepare(data,self._body()))
+            if path == '/api/skill-builds':
+                if method == 'GET':return self._json({'builds':skill_builder.list_builds(data)})
+                if method == 'POST':return self._json(skill_builder.save(data,self._body()))
+            if path.startswith('/api/skill-builds/') and method == 'GET':
+                parts=path[len('/api/skill-builds/'):].split('/')
+                built=skill_builder.read(data,parts[0])
+                if len(parts)==1:return self._json(built)
+                if len(parts)==2 and parts[1] in {'download','handoff'}:
+                    zipped=parts[1]=='download'
+                    content=skill_builder.archive(built) if zipped else built['handoff'].encode()
+                    self._headers(200,'application/zip' if zipped else 'text/markdown; charset=utf-8',len(content),download=built['name']+('.zip' if zipped else '-handoff.md'))
+                    self.wfile.write(content)
+                    return
+            raise core.MnemosError('Skill route or method not supported.',405)
         if method == "GET" and path == "/api/documents":
             query = parse_qs(parsed.query).get("query", [""])[0]
             return self._json({"documents": core.list_documents(data, role, query)})

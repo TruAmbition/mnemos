@@ -48,7 +48,7 @@ class ServerTests(unittest.TestCase):
         data = response.read()
         try:
             content = json.loads(data)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             content = data
         return response.status, dict(response.getheaders()), content
 
@@ -80,6 +80,33 @@ class ServerTests(unittest.TestCase):
             refresh.assert_not_called()
             self.server.setup_enabled = False
             self.assertEqual(self.request(path='/api/projects')[0], 403)
+
+    def test_skill_builder_preview_save_download_and_access_boundaries(self):
+        import io, zipfile
+        core.save_document(self.data, {'id':'skill-source','title':'Repair test data','type':'runbook','status':'verified','body':'Inspect the local test data, then verify the result.'})
+        status,_,result=self.request(path='/api/skill-candidates')
+        self.assertEqual(status,200)
+        candidate=next(c for c in result['candidates'] if c['id']=='document:skill-source')
+        payload={'candidate_id':candidate['id'],'revision':candidate['revision'],'target':'claude','name':'repair-test-data','description':'Repair the local test fixture when asked.'}
+        status,_,preview=self.request('POST','/api/skill-preview',payload)
+        self.assertEqual(status,200)
+        self.assertFalse((self.data/'skill-builds').exists())
+        payload['preview_revision']=preview['preview_revision']
+        status,_,built=self.request('POST','/api/skill-builds',payload)
+        self.assertEqual(status,200)
+        path='/api/skill-builds/'+built['id']
+        status,_,archive=self.request(path=path+'/download')
+        self.assertEqual(status,200)
+        with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+            self.assertIn('repair-test-data/SKILL.md',bundle.namelist())
+        for endpoint in ['/api/skill-candidates','/api/skill-builds',path,path+'/download',path+'/handoff']:
+            self.assertEqual(self.request(path=endpoint,headers={'Authorization':'Bearer '+self.token('reader')})[0],403)
+            self.assertEqual(self.request(path=endpoint,headers={'X-Mnemos-Workspace':'stale'})[0],409)
+        for endpoint in ['/api/skill-preview','/api/skill-builds']:
+            self.assertEqual(self.request('POST',endpoint,payload,{'Authorization':'Bearer '+self.token('reader')})[0],403)
+            self.assertEqual(self.request('POST',endpoint,payload,{'Origin':'https://elsewhere.invalid'})[0],403)
+            self.assertEqual(self.request('POST',endpoint,payload,{'X-Mnemos-Workspace':'stale'})[0],409)
+        self.assertEqual(self.request('POST','/api/skill-preview',payload,{'Authorization':'Bearer '+self.token('author')})[0],200)
 
     def test_stop_requires_owner_workspace_and_managed_launcher(self):
         from unittest.mock import patch

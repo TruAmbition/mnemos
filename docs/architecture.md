@@ -30,6 +30,7 @@ private-data/
   vault/               Obsidian Markdown and workflow files
   backups/             Default local snapshot destination
   backup-history.json  Backup outcomes, when backups have run
+  skill-builds/        Immutable generated skill snapshots (private, outside the vault)
 ```
 
 The vault is always `vault/` under the selected data directory. Initialization refuses to adopt a nonempty unconfigured vault and does not merge with another Obsidian library. Opening the dedicated folder in Obsidian keeps its vault configuration separate. Choosing a data directory outside existing vaults is part of setup.
@@ -69,6 +70,12 @@ The launcher serves local `/setup.html` for choosing the author, dedicated data 
 Cloud handoff exports bounded recall excerpts and source metadata. Full source bodies are optional and explicitly selected, with a separate size limit. The user chooses what to upload. The `mnemos-handoff` skill turns those supplied sources and accessible task evidence into a single new draft capture JSON. Portal import previews it and creates a new draft; it does not overwrite an existing document. Source-only skill export needs no initialized vault and never packages private runtime data.
 
 Neither the local MCP route nor the file handoff needs a tunnel. Optional existing tunnel and hosted Action integrations remain separate. A skill installed in a cloud environment does not confer access to the user's Mac.
+
+## Suggested and generated skills
+
+`mnemos/skill_builder.py` selects active procedural documents and valid dependency plans locally. It packages a small SKILL.md with full source references and revision provenance; no model inference or executable generation is involved. Owner/author API routes support discovery, preview, save, history, ZIP download, and Markdown handoff. Readers and static exports do not expose these private builds. Preview and save check source revisions and the selected name, description, and target. Saved JSON snapshots live under `skill-builds/`; the vault-only backup does not include them. See [Available skills](available-skills.md).
+
+The existing five MCP tools are unchanged. Local agents can use the skill-builder CLI; a remote chat must use supplied files or an appropriately connected tool and cannot assume access to this workstation.
 
 ## Name compatibility
 

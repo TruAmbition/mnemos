@@ -14,10 +14,20 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("skill-candidates", "skill-build", "skill-export", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command == "projects":
+        if command == 'skill-candidates':
+            sub.add_argument('query', nargs='*')
+            sub.add_argument('--include-examples', action='store_true')
+        elif command == 'skill-build':
+            sub.add_argument('--file', required=True, help='Candidate ID, revision, target, name and description JSON')
+            sub.add_argument('--save', action='store_true', help='Save the exact reviewed preview; JSON must include preview_revision')
+        elif command == 'skill-export':
+            sub.add_argument('--id', required=True)
+            sub.add_argument('--output', required=True)
+            sub.add_argument('--handoff', action='store_true')
+        elif command == "projects":
             sub.add_argument('action', choices=['list', 'save', 'refresh', 'remove', 'automatic'], default='list', nargs='?')
             sub.add_argument('--file', help='JSON settings, or id/revision; automatic also needs auto_refresh boolean')
         elif command == "connections":
@@ -51,7 +61,21 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command == "projects":
+        if args.command == 'skill-candidates':
+            from . import skill_builder
+            result=skill_builder.candidates(args.data,' '.join(args.query),args.include_examples)
+        elif args.command == 'skill-build':
+            from . import skill_builder
+            payload=json.loads(Path(args.file).read_text('utf-8'))
+            result=(skill_builder.save if args.save else skill_builder.prepare)(args.data,payload)
+        elif args.command == 'skill-export':
+            from . import skill_builder
+            built=skill_builder.read(args.data,args.id)
+            output=Path(args.output).expanduser().absolute()
+            if output.exists():raise core.MnemosError('Choose a new export filename; existing files are not replaced.')
+            core.atomic_write(output,built['handoff'] if args.handoff else skill_builder.archive(built))
+            result={'output':str(output)}
+        elif args.command == "projects":
             from . import projects
             if args.action == 'list':
                 result = projects.list_projects(args.data)

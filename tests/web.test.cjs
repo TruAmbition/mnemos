@@ -20,7 +20,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(source.replace(startup,
-  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, state};\n})();'), context);
+  '  globalThis.helpers = {markdown, safeURL, calendarDate, scoreDocument, localRecall, parseImportedDocument, selectedHandoffPack, handoffMarkdown, workspaceHeaders, workspaceDownloadURL, recoveryFromValues, connectionCard, projectCard, skillCandidateCard, skillPackageView, state};\n})();'), context);
 const h = context.helpers;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -474,4 +474,18 @@ test('Automatic project controls expose persisted on/off and escape check failur
   assert.match(enabled,/Automatic refresh: On/);
   assert.match(enabled,/Last checked/);
   assert.ok(!enabled.includes('<img'));
+});
+
+
+test('Suggested skill cards escape source text and keep review/example labels', () => {
+  const card=h.skillCandidateCard({id:'document:test',title:'<img src=x>',readiness:'example',source_count:1,project:'<script>',reason:'<svg>',sources:[{id:'test',title:'<img>',revision:'abc',status:'draft',example:true}],buildable:false});
+  assert.ok(!card.includes('<img'));assert.ok(!card.includes('<script>'));assert.ok(!card.includes('<svg>'));
+  assert.match(card,/Example only/);assert.match(card,/disabled/);assert.match(card,/data-source-id="test"/);
+});
+
+test('Skill preview renders text safely and offers workspace-bound downloads only for saved builds', () => {
+  const built={id:'skill-1234567890abcdef',guidance:'<img>',files:{'SKILL.md':'</textarea><script>alert(1)</script>'}};
+  const preview=h.skillPackageView(built,false);assert.ok(!preview.includes('<script>'));assert.match(preview,/Save skill/);assert.ok(!preview.includes('Download skill ZIP'));
+  h.state.data={workspace_id:'current-workspace'};
+  const saved=h.skillPackageView(built,true);assert.match(saved,/workspace=current-workspace/);assert.match(saved,/Download skill ZIP/);assert.match(saved,/Download cloud handoff/);
 });

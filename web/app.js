@@ -10,6 +10,7 @@
     library:'M3 4h6v7H3z M14 4h7v7h-7z M3 16h6v5H3z M14 16h7v5h-7z',
     search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
     handoff:'M3 7h12 M11 3l4 4-4 4 M21 17H9 M13 13l-4 4 4 4',
+    skills:'M12 3l3 6 6 3-6 3-3 6-3-6-6-3 6-3z M18 3v4 M16 5h4',
     projects:'M3 6h7l2 2h9v12H3z M8 12h8 M12 10v6',
     connections:'M7 7h4v10H7z M15 7h4v10h-4z M3 12h4 M11 12h4 M19 12h3',
     setup:'M12 3v6 M12 15v6 M3 12h6 M15 12h6 M8 8l-3-3 M16 16l3 3 M8 16l-3 3 M16 8l3-3',
@@ -136,7 +137,7 @@
   }
   function updateChrome() {
     const links = [{id:'library',label:'Library',count:documents().length},{id:'recall',label:'Recall context'},{id:'handoff',label:'Cloud handoff'},{id:'workflows',label:'Workflows',count:workflows().length}];
-    if (canWrite()) links.splice(1,0,{id:'capture',label:'Capture knowledge'});
+    if (canWrite()){links.splice(1,0,{id:'capture',label:'Capture knowledge'});links.push({id:'skills',label:'Available skills'});}
     if (isOwner() || staticMode) links.push({id:'settings',label:staticMode ? 'About this vault' : 'Settings',divider:true});
     if(isOwner()&&state.data.setup_available===true)links.push({id:'projects',label:'Projects'},{id:'connections',label:'Connections'},{id:'setup',label:'Workspace setup',href:'/setup.html'});
     $('#navigation').innerHTML = links.map(item => `${item.divider ? '<div class="nav-divider"></div>' : ''}<a href="${item.href||'#'+item.id}" class="nav-item${state.view===item.id ? ' active' : ''}" ${state.view===item.id?'aria-current="page"':''}>${icon(item.id)}<span>${item.label}</span>${item.count !== undefined ? `<span class="count">${item.count}</span>` : ''}</a>`).join('');
@@ -159,7 +160,7 @@
   function route() {
     if (!state.data) return;
     const [view, id] = window.location.hash.slice(1).split('/');
-    const valid = [...(isOwner()&&state.data.setup_available?['connections','projects']:[]),'library','recall','handoff','workflows',...(canWrite()?['capture']:[]),...((isOwner()||staticMode)?['settings']:[])];
+    const valid = [...(isOwner()&&state.data.setup_available?['connections','projects']:[]),'library','recall','handoff','workflows',...(canWrite()?['capture','skills']:[]),...((isOwner()||staticMode)?['settings']:[])];
     state.view = valid.includes(view) ? view : 'library';
     closeOverlay();
     render();
@@ -172,11 +173,11 @@
   function render() {
     clearTimeout(projectPollTimer);projectPollGeneration++;
     updateChrome();
-    const labels = {projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
+    const labels = {skills:'Available skills',projects:'Projects',connections:'Connections',library:'Library',capture:'Capture knowledge',recall:'Recall context',handoff:'Cloud handoff',workflows:'Workflows',settings:staticMode?'About this vault':'Settings'};
     $('#breadcrumb-view').textContent = labels[state.view];
     document.title = `${labels[state.view]} · Mnemos`;
     if (role()==='anonymous') { renderLocked(); updateWorkspaceNotice(); return; }
-    ({projects:renderProjects,connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
+    ({skills:renderSkills,projects:renderProjects,connections:renderConnections,library:renderLibrary,capture:renderCapture,recall:renderRecall,handoff:renderHandoff,workflows:renderWorkflows,settings:renderSettings}[state.view] || renderLibrary)();
     updateWorkspaceNotice();
   }
   function heading(eyebrow, title, description, action='') {
@@ -409,6 +410,76 @@
       toast('Imported into the form. Review the document and save when it is ready.');
     }catch(error){toast(`Import failed: ${error.message}`,true);}
     finally{event.target.value='';}
+  }
+  function skillReadiness(value) {
+    return {'verified-sources':'Verified sources','review-needed':'Review needed',example:'Example only'}[value]||'Review needed';
+  }
+  function skillCandidateCard(candidate) {
+    return `<article class="panel skill-card"><div class="connection-card-title">${icon('skills')}<h2>${escape(candidate.title)}</h2></div><div class="skill-badges"><span class="connection-status">${escape(skillReadiness(candidate.readiness))}</span><span class="inline-count">${candidate.source_count} source${candidate.source_count===1?'':'s'}</span>${candidate.project?`<span class="inline-count">${escape(candidate.project)}</span>`:''}</div><p>${escape(candidate.reason)}</p><details><summary>Review source documents</summary>${candidate.sources.map(source=>`<div class="skill-source"><button class="button text small" data-action="read-skill-source" data-source-id="${escape(source.id)}">${escape(source.title)}</button><small>${escape(source.status)} · revision ${escape(source.revision.slice(0,12))}${source.example?' · example':''}</small></div>`).join('')}</details><div class="project-actions"><button class="button primary small" data-action="configure-skill" data-candidate-id="${escape(candidate.id)}"${candidate.buildable?'':' disabled'}>${icon('plus')} Build skill</button>${candidate.buildable?'':'<small>Split this procedure into smaller tasks before building.</small>'}</div></article>`;
+  }
+  function renderSkills() {
+    $('#main').innerHTML=heading('YOUR NEXT REUSABLE WORKFLOW','Available skills','Turn documented procedures into skills for ChatGPT or Claude.')+
+      notice('Suggestions come from your procedures and workflow dependencies. Building creates instructions and source references locally; it does not execute a task, call an AI service, or install anything in a cloud account.')+
+      `<form class="panel skill-filters" id="skill-search"><div class="field"><label for="skill-query">Find a task or project</label><input id="skill-query" name="query" type="search" maxlength="1000" placeholder="e.g. backup, deployment, troubleshooting" value="${escape(state.skillQuery||'')}"></div><label class="project-auto-choice"><input type="checkbox" name="examples"${state.skillExamples?' checked':''}> Show bundled examples</label><button class="button" type="submit">Find suggestions</button></form><div id="skill-builder-slot"></div><div id="skill-candidates" aria-live="polite">Finding documented procedures…</div><section class="panel" style="margin-top:24px"><h2>Built skills</h2><p>Saved packages are snapshots. Review changed sources and build a new version before using an outdated procedure.</p><div id="skill-builds"></div></section>`;
+    $('#skill-search').addEventListener('submit',event=>{event.preventDefault();const fields=new FormData(event.target);state.skillQuery=fields.get('query');state.skillExamples=fields.has('examples');loadSkillSuggestions();});
+    loadSkillSuggestions();loadSkillBuilds();
+  }
+  async function loadSkillSuggestions() {
+    try {
+      const result=await api('/api/skill-candidates?query='+encodeURIComponent(state.skillQuery||'')+'&examples='+(state.skillExamples?'1':'0'));
+      if(state.view!=='skills'||state.workspaceStale)return;
+      state.skillCandidates=result.candidates;
+      $('#skill-candidates').innerHTML=(result.warnings||[]).map(w=>notice(w)).join('')+(result.candidates.length?`<div class="results-heading"><h2>Suggested workflows <span>${result.candidates.length}</span></h2><span class="result-note">Review sources before reuse</span></div><div class="skill-grid">${result.candidates.map(skillCandidateCard).join('')}</div>`:notice('No matching procedures yet. Capture a runbook, troubleshooting guide, or microtask with steps and verification. You can also show the bundled examples.'));
+    }catch(error){if($('#skill-candidates'))$('#skill-candidates').innerHTML=notice(error.message,'error');}
+  }
+  async function loadSkillBuilds() {
+    try {
+      const result=await api('/api/skill-builds');if(state.view!=='skills'||state.workspaceStale)return;
+      $('#skill-builds').innerHTML=result.builds.length?result.builds.map(build=>`<div class="backup-row"><div><strong>${escape(build.name)}</strong><small>${escape(build.target==='claude'?'Claude':'ChatGPT')} · ${escape(skillReadiness(build.readiness))} · ${escape(build.freshness==='current'?'Sources unchanged':build.freshness==='changed'?'Sources changed — rebuild recommended':'Source unavailable')} · ${escape(formatDate(build.created))}</small></div><button class="button small" data-action="view-built-skill" data-build-id="${escape(build.id)}">View & download</button></div>`).join(''):notice('No skills built yet. Choose a suggestion above to create the first one.');
+    }catch(error){if($('#skill-builds'))$('#skill-builds').innerHTML=notice(error.message,'error');}
+  }
+  function configureSkill(id) {
+    const candidate=(state.skillCandidates||[]).find(c=>c.id===id);if(!candidate)return;
+    state.skillCandidate=candidate;state.skillPreview=null;state.skillPayload=null;state.skillRequest=(state.skillRequest||0)+1;
+    $('#skill-builder-slot').innerHTML=`<form class="panel" id="skill-builder"><div class="panel-heading">${icon('skills')}<h2>Build: ${escape(candidate.title)}</h2></div><p>${escape(skillReadiness(candidate.readiness))}. Your package will contain the ${candidate.source_count} source document${candidate.source_count===1?'':'s'} listed on this suggestion. Review confidential content before uploading it elsewhere.</p><div class="form-row"><div class="field"><label for="skill-name">Skill name</label><input id="skill-name" name="name" maxlength="63" required pattern="[a-z0-9]+(-[a-z0-9]+)*" value="${escape(candidate.name)}"><small>Lowercase letters, numbers, and hyphens.</small></div><div class="field"><label for="skill-target">Use with</label><select id="skill-target" name="target"><option value="chatgpt">ChatGPT / Codex</option><option value="claude">Claude</option></select></div></div><div class="field"><label for="skill-description">When should the assistant use this skill?</label><textarea id="skill-description" name="description" maxlength="200" rows="2" required>${escape(candidate.description)}</textarea></div><div class="form-actions"><button class="button primary" type="submit">Preview skill</button><button class="button text" type="button" data-action="cancel-skill">Cancel</button></div><div id="skill-preview" aria-live="polite"></div></form>`;
+    $('#skill-builder').addEventListener('submit',previewSkill);
+    $('#skill-builder').addEventListener('input',()=>{state.skillRequest=(state.skillRequest||0)+1;state.skillPreview=null;state.skillPayload=null;$('#skill-preview').innerHTML='';});
+    $('#skill-name').focus();
+  }
+  function skillPackageView(built,saved=false) {
+    return `<div class="skill-package"><h3>${saved?'Saved skill':'Review your skill'}</h3><p>${escape(built.guidance)}</p><div class="field"><label for="skill-instructions">Generated instructions</label><textarea id="skill-instructions" class="code-editor" readonly rows="12">${escape(built.files['SKILL.md'])}</textarea></div><details><summary>Included files (${Object.keys(built.files).length})</summary><ul>${Object.keys(built.files).map(path=>`<li>${escape(path)}</li>`).join('')}</ul><p>The source notes are included in full; no executable scripts are generated.</p></details>${saved?`<div class="project-actions"><a class="button primary" href="${escape(workspaceDownloadURL('/api/skill-builds/'+built.id+'/download'))}" download>${icon('download')} Download skill ZIP</a><a class="button" href="${escape(workspaceDownloadURL('/api/skill-builds/'+built.id+'/handoff'))}" download>Download cloud handoff</a></div><p class="connection-help">This build is saved locally. Test it in the target assistant before relying on it. Downloading does not install or enable it.</p>`:'<div class="project-actions"><button class="button primary" type="button" data-action="save-built-skill">Save skill</button></div>'}</div>`;
+  }
+  async function previewSkill(event) {
+    event.preventDefault();const candidate=state.skillCandidate;
+    const fields=Object.fromEntries(new FormData(event.target).entries());
+    const payload={candidate_id:candidate.id,revision:candidate.revision,...fields};
+    const request=state.skillRequest=(state.skillRequest||0)+1;
+    const button=event.target.querySelector('[type="submit"]');button.disabled=true;
+    try {
+      const preview=await api('/api/skill-preview',{method:'POST',body:JSON.stringify(payload)});
+      if(state.view!=='skills'||state.workspaceStale||state.skillCandidate!==candidate||state.skillRequest!==request)return;
+      state.skillPreview=preview;state.skillPayload={...payload,preview_revision:preview.preview_revision};
+      $('#skill-preview').innerHTML=skillPackageView(preview);
+    }catch(error){if($('#skill-preview'))$('#skill-preview').innerHTML=notice(error.message,'error');}
+    finally{if(button.isConnected)button.disabled=false;}
+  }
+  async function saveBuiltSkill(button) {
+    if(!state.skillPayload)return;button.disabled=true;
+    try {
+      const built=await api('/api/skill-builds',{method:'POST',body:JSON.stringify(state.skillPayload)});
+      if(state.view!=='skills'||state.workspaceStale)return;
+      state.skillPayload=null;state.skillPreview=null;
+      $('#skill-builder-slot').innerHTML=`<section class="panel">${skillPackageView(built,true)}</section>`;
+      await loadSkillBuilds();toast('Skill saved. Download it and test it with your assistant.');
+    }catch(error){toast(error.message,true);if(button.isConnected)button.disabled=false;}
+  }
+  async function viewBuiltSkill(id) {
+    try {
+      const built=await api('/api/skill-builds/'+encodeURIComponent(id));
+      if(state.view!=='skills'||state.workspaceStale)return;
+      $('#skill-builder-slot').innerHTML=`<section class="panel">${skillPackageView(built,true)}</section>`;
+      $('#skill-instructions').focus();
+    }catch(error){toast(error.message,true);}
   }
   function renderWorkflows() {
     $('#main').innerHTML=heading('SMALL TASKS. REPEATABLE OUTCOMES.','From knowledge to action.','Connect documented microtasks into an ordered plan that an engineer or an assistant can follow.')+
@@ -733,6 +804,11 @@
     if(target.closest('#navigation')&&target.getAttribute('href').startsWith('#')){event.preventDefault();navigate(target.getAttribute('href').slice(1));return;}
     switch(target.dataset.action){
       case 'reload':load();break;
+      case 'read-skill-source':try{const result=await api('/api/documents/'+encodeURIComponent(target.dataset.sourceId));if(state.view==='skills'&&!state.workspaceStale){state.data.documents=documents().filter(d=>d.id!==result.document.id);state.data.documents.unshift(result.document);openDocument(result.document.id);}}catch(error){toast(error.message,true);}break;
+      case 'configure-skill':configureSkill(target.dataset.candidateId);break;
+      case 'cancel-skill':state.skillPayload=null;state.skillPreview=null;state.skillCandidate=null;$('#skill-builder-slot').innerHTML='';break;
+      case 'save-built-skill':await saveBuiltSkill(target);break;
+      case 'view-built-skill':await viewBuiltSkill(target.dataset.buildId);break;
       case 'new-project':state.projectEditing=null;renderProjectForm();break;
       case 'edit-project':state.projectEditing=(state.projects||[]).find(p=>p.id===target.dataset.projectId);renderProjectForm();$('#project-name')?.focus();break;
       case 'toggle-project-automatic':await toggleProjectAutomatic(target);break;
