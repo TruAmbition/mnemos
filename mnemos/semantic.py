@@ -51,7 +51,7 @@ def _cache(data):
     try:
         if path.stat().st_size > 100_000_000:
             return {}
-        value = json.loads(path.read_text())
+        value = json.loads(path.read_text(encoding='utf-8'))
         return value if isinstance(value, dict) and isinstance(value.get('notes'), dict) else {}
     except (FileNotFoundError, ValueError):
         return {}

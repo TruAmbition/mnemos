@@ -23,7 +23,7 @@ def read(data, identifier):
     try:
         if path.stat().st_size > 2_000_000:
             raise ValueError()
-        value = json.loads(path.read_text())
+        value = json.loads(path.read_text(encoding='utf-8'))
         if not isinstance(value, dict) or value.get('id') != identifier:
             raise ValueError()
         return value

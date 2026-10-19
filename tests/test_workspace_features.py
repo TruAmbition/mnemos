@@ -122,7 +122,17 @@ class SessionInboxTests(WorkspaceFixture):
         with self.assertRaises(core.MnemosError):inbox.accept(self.data,{'id':record['id'],'index':0,'review_revision':'old'})
         core.save_document(self.data,{**self.one,'body':'Changed after collection'})
         with self.assertRaises(core.MnemosError) as error:inbox.accept(self.data,{'id':record['id'],'index':0,'review_revision':review['review_revision']})
-        self.assertEqual(error.exception.status,409);self.assertEqual(len(core.list_documents(self.data)),2)
+        self.assertEqual(error.exception.status,409,str(error.exception));self.assertEqual(len(core.list_documents(self.data)),2)
+    def test_unicode_evidence_survives_review_and_reopening(self):
+        text='Résumé — 日本語 → ✅; preserve “decisions” and café.'
+        record=self.collect(text=text)
+        self.assertEqual(inbox.read(self.data,record['id'])['context'],text)
+        checked=inbox.review(self.data,{'id':record['id']})
+        reread=inbox.read(self.data,record['id'])
+        self.assertEqual(reread['context'],text)
+        self.assertIn(text,reread['proposal']['items'][0]['body'])
+        saved=inbox.accept(self.data,{'id':record['id'],'index':0,'review_revision':checked['review_revision']})
+        self.assertIn(text,core.get_document(self.data,saved['document']['id'])['body'])
     def test_invalid_citations_targets_secrets_and_shapes(self):
         record=self.collect()
         mutations=[lambda p:p['items'][0].update(source_ids=['invented']),lambda p:p['items'][0].update(action='update',target_id='missing'),lambda p:p['items'][0].update(body='api_key: test-credential-not-real'),lambda p:p.update(session_id='session-'+'a'*16),lambda p:p['items'][0].update(action='combine',source_ids=['session-notes'])]

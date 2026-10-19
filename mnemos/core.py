@@ -127,7 +127,11 @@ def load_config(data_path: str | Path) -> dict:
     if path.is_symlink():
         raise MnemosError("Configuration must not be a symbolic link.")
     try:
-        config = json.loads(path.read_text("utf-8"))
+        # Windows can deny an open while another thread replaces this file.
+        # Share our writers' reentrant lock without requiring write permission
+        # merely to read an existing workspace.
+        with LOCK:
+            config = json.loads(path.read_text("utf-8"))
     except FileNotFoundError as exc:
         raise MnemosError("Initialize Mnemos first with `python -m mnemos init`.") from exc
     except (OSError, json.JSONDecodeError) as exc:
