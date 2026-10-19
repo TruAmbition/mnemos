@@ -62,6 +62,24 @@ class ServerTests(unittest.TestCase):
     def token(self, role):
         return core.issue_token(self.data, role, role.title(), 'team')
 
+    def test_workspace_tools_require_local_owner_and_bind_mutations(self):
+        paths = ['/api/session-inbox', '/api/workspace-backup', '/api/semantic']
+        token = self.token('owner')
+        for path in paths:
+            status, _, _ = self.request('POST',path,{},headers={'Authorization':'Bearer '+token})
+            self.assertEqual(status,403,path)
+            status, _, _ = self.request('POST',path,{},headers={'X-Mnemos-Workspace':'old-workspace'})
+            self.assertEqual(status,409,path)
+        status, _, result = self.request('GET','/api/semantic')
+        self.assertEqual(status,200);self.assertFalse(result['enabled'])
+        status, _, result = self.request('POST','/api/session-inbox',{'title':'Test session','start':'2026-10-18T00:00:00Z','end':'2026-10-18T01:00:00Z','context':'Checked deployment logs. Validation remains pending.'})
+        self.assertEqual(status,200)
+        identifier=result['id']
+        status, _, reviewed = self.request('POST','/api/session-inbox/review',{'id':identifier})
+        self.assertEqual(status,200)
+        status, _, saved = self.request('POST','/api/session-inbox/accept',{'id':identifier,'index':0,'review_revision':reviewed['review_revision']})
+        self.assertEqual(status,200);self.assertTrue(saved['document']['id'].startswith('session-'))
+
     def test_graph_respects_session_scope(self):
         result=self.request(path='/api/graph')
         self.assertEqual(result[0],200)

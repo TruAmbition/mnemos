@@ -374,6 +374,37 @@ class Handler(BaseHTTPRequestHandler):
             return self._routes(method, parsed, path)
 
     def _routes(self, method, parsed, path):
+        if path.startswith(('/api/workspace-backup', '/api/session-inbox', '/api/semantic')):
+            self._require_local_setup()
+            data = self.server.data_path
+            if path.startswith('/api/workspace-backup'):
+                from . import workspace_backup
+                operations = {'/api/workspace-backup': workspace_backup.create,
+                              '/api/workspace-backup/preview': workspace_backup.preview,
+                              '/api/workspace-backup/restore': workspace_backup.restore}
+            elif path.startswith('/api/session-inbox'):
+                from . import session_inbox
+                if method == 'GET':
+                    if path == '/api/session-inbox':
+                        return self._json(session_inbox.overview(data))
+                    return self._json(session_inbox.read(data, path.rsplit('/', 1)[1]))
+                operations = {'/api/session-inbox': session_inbox.create,
+                    '/api/session-inbox/handoff': session_inbox.handoff,
+                    '/api/session-inbox/review': session_inbox.review,
+                    '/api/session-inbox/accept': session_inbox.accept,
+                    '/api/session-inbox/remove': session_inbox.remove}
+            else:
+                from . import semantic
+                if method == 'GET' and path == '/api/semantic':
+                    return self._json(semantic.status(data))
+                if method == 'GET' and path == '/api/semantic/search':
+                    params = parse_qs(parsed.query)
+                    return self._json(semantic.search(data, params.get('query',[''])[0], params.get('project_id',[''])[0], params.get('type',['all'])[0]))
+                operations = {'/api/semantic': semantic.configure,
+                              '/api/semantic/rebuild': lambda data, payload: semantic.rebuild(data)}
+            if method == 'POST' and path in operations:
+                return self._json(operations[path](data, self._body()))
+            raise core.MnemosError('Unsupported local workspace operation.', 405)
         if path.startswith('/api/git-backup'):
             self._require_local_setup()
             from . import git_backup
@@ -571,7 +602,12 @@ class Handler(BaseHTTPRequestHandler):
                 budget = int(params.get("budget", ["6000"])[0])
             except ValueError as exc:
                 raise core.MnemosError("Recall budget must be a number of characters.") from exc
-            return self._json(recall(data, params.get("query", [""])[0], budget, role, params.get("project_id", [""])[0]))
+            mode = params.get('method', ['keyword'])[0]
+            if mode == 'semantic':
+                self._require_local_setup()
+            elif mode != 'keyword':
+                raise core.MnemosError('Choose keyword or semantic retrieval.')
+            return self._json(recall(data, params.get("query", [""])[0], budget, role, params.get("project_id", [""])[0], method=mode))
         if method == 'GET' and path == '/api/handoff':
             from .handoff import build_pack
             params = parse_qs(parsed.query)

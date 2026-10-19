@@ -120,6 +120,7 @@ struct ManagerView: View {
                 Text("Work with your AI assistant").font(.headline)
                 Text("Use ChatGPT, Claude, or a local agent for the work. Bring the useful context and results back to Mnemos.").foregroundStyle(.secondary)
                 HStack {
+                    Button("Summarize my session") { model.openWeb("/#inbox") }.disabled(!model.initialized)
                     Button("Prepare a handoff") { model.openWeb("/#handoff") }.disabled(!model.initialized)
                     Button("Browse skills") { model.openWeb("/#skills") }.disabled(!model.initialized)
                 }
@@ -251,6 +252,11 @@ struct ManagerView: View {
                     if let pushed = model.gitBackup?.last_push { Text("Last successful push: " + pushed).font(.caption) }
                     Button("Configure Git remote & backup") { model.openWeb("#settings") }
                     Text("Choose or create a dedicated documentation repository, configure its remote, and optionally enable automatic commits and pushes.").font(.caption).foregroundStyle(.secondary)
+                }
+                card("Complete workspace recovery") {
+                    Text("Back up notes, saved skill builds, proposals, and the session inbox. Restore into an inactive workspace with reviewed repository paths.").foregroundStyle(.secondary)
+                    Button("Open backup & recovery") { model.openWeb("/#recovery") }
+                    Button("Configure local meaning search") { model.openWeb("/#search-settings") }
                 }
                 card("Saved backup destination") {
                     Text(model.setup?.backup.provider == "local" ? model.setup?.backup.destination ?? "" : model.setup?.backup.remote ?? "").textSelection(.enabled)

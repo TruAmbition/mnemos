@@ -2,6 +2,14 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Session inbox, local meaning search, and workspace recovery (0.13.0)
+
+On October 18, 2026, the source passed **231 Python tests, 62 JavaScript helper tests, and 6 native Swift tests**. New checks cover archive completeness, credential/approval exclusions, checksum corruption, unsafe paths, empty-target protection, reviewed repository remapping, disabled restoration automation, source-cited session proposals, update/combine behavior, repeated saves, stale revisions, duplicate suggestions, privacy guards, and local-owner/workspace-bound HTTP access.
+
+Embedding tests use deterministic test vectors to verify actual cosine ranking of queries without shared document keywords, incremental refresh, model-digest invalidation, archived-source removal, recall excerpts, and fixed-loopback transport with redirect rejection. They are not a quality benchmark of an installed model. The real local Ollama service was reachable but had no supported embedding model; the browser showed the missing-model error. No model was downloaded, and meaning search remains off in the user's workspace.
+
+An isolated browser workspace verified collection without library writes, explicit handoff preparation, simulated assistant JSON import, body preview, reviewed update saved once, resume after reload, and full archive inspection/restoration into a separate inactive directory. Test notes and screenshots are synthetic. The native manager's new entries compile and its six lifecycle/API tests pass; a separate native-window visual pass is not claimed. The self-contained Apple Silicon package also passed all six Swift lifecycle tests, CLI/MCP forwarding, ad-hoc signature verification, and DMG integrity checks. Its bundled web files match final source.
+
 ## Open relationship network (0.12.2)
 
 All **62 JavaScript tests** passed after removing anatomical paths, hemisphere constraints, and the layout picker. The bounded deterministic layout checks now cover an open network and centered single-node view. An isolated browser check confirmed the absence of anatomical paths, clear spacing, retained node selection, default type colors, and functioning project colors. Screenshots use synthetic documentation.

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mnemos knowledge and context",
-    "version": "0.12.2",
+    "version": "0.13.0",
     "description": "Recall engineering context, read source documents, and save evidence-backed drafts to a private Mnemos library. Requires a configured HTTPS host and a scoped Mnemos credential."
   },
   "servers": [

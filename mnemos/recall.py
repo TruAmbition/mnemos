@@ -26,7 +26,7 @@ def _excerpt(body, terms, limit):
     return raw if len(raw) <= limit else raw[:max(0, limit - 18)].rstrip() + '\n[excerpt ends]'
 
 
-def recall_documents(documents, query, budget=6000):
+def recall_documents(documents, query, budget=6000, *, semantic=False):
     query = str(query).strip()
     if not query or len(query) > 1000:
         raise ValueError('Enter a search query between 1 and 1,000 characters.')
@@ -45,8 +45,10 @@ def recall_documents(documents, query, budget=6000):
                     (5 if term in summary else 0) + (5 if term in project_names else 0) + min(4, body.count(term)) for term in terms)
         if query.casefold() == str(doc.get('id', '')).casefold():
             score += 100
+        if semantic:
+            score = doc.get('search_score', 0)
         if score:
-            score += 2 if doc.get('type') == 'context' else 0
+            score += 2 if not semantic and doc.get('type') == 'context' else 0
             ranked.append((score, doc))
     ranked.sort(key=lambda pair: (-pair[0], pair[1].get('id', '')))
     preamble = ('# Mnemos recalled context\n'
@@ -76,7 +78,9 @@ def recall_documents(documents, query, budget=6000):
         if room < 40:
             continue
         body = str(doc.get('body', '')).strip()
-        if doc.get('type') == 'context':
+        if semantic and doc.get('semantic_excerpt'):
+            excerpt = _excerpt(doc['semantic_excerpt'], terms, room)
+        elif doc.get('type') == 'context':
             # Context documents are already compact handoffs. Preserve their
             # complete decisions and next actions when the per-source budget fits.
             marker = '\n[context truncated]'
@@ -95,14 +99,21 @@ def recall_documents(documents, query, budget=6000):
             'items': items, 'context': context, 'method': 'keyword', 'estimate_notice': 'Token estimate uses characters / 4; actual token use varies.'}
 
 
-def recall(data_path, query, budget=6000, role='owner', project_id=''):
+def recall(data_path, query, budget=6000, role='owner', project_id='', *, method='keyword'):
     from .core import list_documents
     from .knowledge_projects import scope, freshness
-    documents = scope(current_project_context(data_path, list_documents(data_path, role=role)), project_id)
+    if method == 'semantic':
+        from .semantic import search
+        documents = search(data_path, query, project_id)['documents']
+    else:
+        documents = scope(current_project_context(data_path, list_documents(data_path, role=role)), project_id)
     for doc in documents:
         if any(isinstance(s,str) and s.startswith('mnemos') for s in doc.get('sources', [])):
             doc['evidence_changed'] = bool(freshness(data_path, doc)['changed'])
-    return recall_documents(documents, query, budget)
+    result = recall_documents(documents, query, budget, semantic=method=='semantic')
+    if method == 'semantic':
+        result['method'] = 'local-embeddings-and-keywords'
+    return result
 
 
 def current_project_context(data_path, documents):

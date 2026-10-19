@@ -11,7 +11,8 @@ Open **Mnemos.app**. The manager starts its local service when needed. A fresh i
 - **Overview:** active workspace, service status, start/stop, Open Library, Open in Obsidian, and Show vault in Finder.
 - **Knowledge brain:** explore colored project, repository, skill, workflow, and documentation orbs inside the desktop window. Select a node for its recorded relationships and open its documentation.
 - **Workspace:** change author, choose local tools/cloud file handoff/existing connection, configure local or rclone backups, and optionally install Obsidian. Create a new workspace or inspect and activate an existing one. Only one workspace is the active default for this installation. Activation keeps the previous workspace intact.
-- **Backups:** show the saved destination, make a backup, and inspect recent results. Cloud upload failures retain their local snapshot. There is no automatic backup schedule in this version.
+- **Backups:** includes an entry to complete workspace backup/recovery and local meaning-search settings in the web UI.
+- **Vault snapshots:** show the saved destination, make a backup, and inspect recent results. Cloud upload failures retain their local snapshot. There is no automatic backup schedule in this version.
 - **Projects:** review existing local checkouts and toggle automatic context refresh for each repo. Add projects or change source patterns through **Add or manage projects in Library**.
 - **Assistants:** inspect existing local connection status and targets, run local checks, and read the tunnel/file handoff tradeoffs. Installation commands and portable skills remain in browser setup. Choosing an assistant mode does not install skills, connect an account, or start a tunnel.
 
@@ -55,3 +56,5 @@ The build is ad-hoc signed and not Apple notarized. Signing, enterprise deployme
 ## Projects in 0.9
 
 The Projects screen groups repositories under their top-level systems and opens project-scoped Library search. Repository refresh switches remain available. Use the browser project editor for membership, declared relationships, explanation handoffs, and Obsidian Canvas generation.
+
+The Overview panel also has **Summarize my session**, opening the same durable session inbox used by the web Library. The native app and website share all saved settings and notes.

@@ -245,3 +245,26 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(prefers-reduced-motion:reduce){.brain-node,.brain-edge{transition:none}}
 
 .brain-return{align-self:flex-start;margin:16px 24px 0}
+/* Workspace tasks keep collection and review in a single focused column. */
+.workspace-shortcuts{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.session-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:24px;align-items:start}
+.session-layout .panel{min-width:0}.session-layout h2{margin-top:0}
+.session-layout p,.session-step p{line-height:1.75}
+.session-sources{border:1px solid #ddd8ed;border-radius:12px;margin:18px 0;padding:16px}
+#session-sources{max-height:280px;overflow:auto}
+#session-sources label{display:flex;align-items:start;gap:10px;padding:9px 4px;cursor:pointer}
+#session-sources input{width:auto;margin-top:4px;flex:none}
+#session-sources small,.session-list-item small{display:block;color:#6f6b80;font-size:12px;line-height:1.6}
+.session-list-item{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #e5dfef;background:transparent;padding:15px 0;cursor:pointer;color:inherit;font:inherit}
+.session-list-item:hover strong{color:#7053c1}
+.session-step{padding:24px 0;border-top:1px solid #e5dfef;margin-top:20px}
+.session-step>label{display:block;margin:12px 0 8px}
+.session-step textarea{width:100%;box-sizing:border-box}.session-step button{margin-top:12px}
+.session-evidence{max-height:420px;overflow:auto;padding:14px;background:#f5f3fa;border-radius:10px}
+.session-evidence pre,.proposal-diff{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7}
+.proposal-card{border:1px solid #d9d2eb;border-radius:14px;padding:22px;margin-top:22px}
+.proposal-card .markdown{max-height:450px;overflow:auto;background:#faf9fd;padding:16px;margin:12px 0}
+.proposal-card .notice{margin:14px 0}.proposal-diff{max-height:300px;overflow:auto}
+#workspace-tool-root .code-editor{width:100%;box-sizing:border-box}
+#workspace-backup-result code{overflow-wrap:anywhere}
+@media(max-width:900px){.session-layout{grid-template-columns:1fr}.workspace-shortcuts{flex-direction:column}}

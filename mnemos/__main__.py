@@ -14,10 +14,16 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "knowledge-projects", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("session-inbox", "workspace-backup", "semantic-search", "skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "knowledge-projects", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command == 'skill-analysis':
+        if command in {'session-inbox', 'workspace-backup', 'semantic-search'}:
+            actions = {'session-inbox': ['list','create','read','handoff','review','accept','remove'],
+                       'workspace-backup': ['create','preview','restore'],
+                       'semantic-search': ['status','configure','rebuild','search']}[command]
+            sub.add_argument('action', choices=actions)
+            sub.add_argument('--file', help='Local JSON request or exact preview to accept')
+        elif command == 'skill-analysis':
             sub.add_argument('action',choices=['request','preview','accept'])
             sub.add_argument('--file',required=True,help='Source selection or proposal/review JSON')
         elif command == 'local-skills':
@@ -77,7 +83,19 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command == 'skill-analysis':
+        if args.command in {'session-inbox','workspace-backup','semantic-search'}:
+            from . import session_inbox, workspace_backup, semantic
+            payload = json.loads(Path(args.file).read_text('utf-8')) if args.file else {}
+            if args.command == 'session-inbox':
+                operations = {'list':lambda d,p:session_inbox.overview(d), 'read':lambda d,p:session_inbox.read(d,p.get('id')),
+                    'create':session_inbox.create,'handoff':session_inbox.handoff,'review':session_inbox.review,'accept':session_inbox.accept,'remove':session_inbox.remove}
+            elif args.command == 'workspace-backup':
+                operations = {'create':workspace_backup.create,'preview':workspace_backup.preview,'restore':workspace_backup.restore}
+            else:
+                operations = {'status':lambda d,p:semantic.status(d),'configure':semantic.configure,'rebuild':lambda d,p:semantic.rebuild(d),
+                    'search':lambda d,p:semantic.search(d,p.get('query'),p.get('project_id',''),p.get('type','all'))}
+            result = operations[args.action](args.data,payload)
+        elif args.command == 'skill-analysis':
             from . import skill_analysis
             payload=json.loads(Path(args.file).read_text('utf-8'))
             result={'request':skill_analysis.request,'preview':skill_analysis.validate,'accept':skill_analysis.accept}[args.action](args.data,payload)

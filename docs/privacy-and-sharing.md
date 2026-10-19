@@ -55,3 +55,12 @@ Disconnecting repositories or removing project groupings preserves notes, genera
 ## Git documentation backups
 
 Optional documentation Git backups preserve local history without changing project checkouts. Local snapshots may include private content. Remote pushes are external full-vault sharing and require the applicable team classification and secret checks, including historical contents. A snapshot captured while sharing was blocked remains local-only in that repository. Saving a remote URL never uploads content. See [Git documentation backup settings and recovery](git-documentation-backup.md).
+
+
+## Session inbox, semantic search, and workspace recovery
+
+Session evidence is private local data outside the vault. Selected-note handoffs require current AI approval; pasted context requires explicit review and credential screening before handoff generation. Downloading a handoff does not upload it. Notes saved from proposals start as drafts and retain source relationships; they do not gain AI approval automatically. Removing an inbox record preserves saved notes and cannot retract previously shared files.
+
+Optional meaning search sends queries and selected note passages to the local Ollama service only (`127.0.0.1:11434`). It is off by default and available only through local-owner management. Trust and secure that local service; Mnemos cannot police independently configured software. The vector index is private derived data, excluded from all standard exports and workspace archives and deleted when meaning search is disabled.
+
+Complete workspace archives contain private notes, stored skill sources, AI requests/proposals, and inbox evidence. They are local plaintext ZIPs; select a protected destination. A cloud-synced folder may upload them outside Mnemos. This format has no rclone or remote upload action. Runtime credentials, connection profiles, AI approvals, personal Obsidian settings, external repository contents and model/index files are excluded. Restore never activates the recovered workspace or resumes automatic refresh/push. Reconnect assistants and review sharing again after choosing the restored workspace in setup.
