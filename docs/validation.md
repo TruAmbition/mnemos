@@ -2,6 +2,12 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## Guided tutorial (0.15.0)
+
+The source passed **70 JavaScript tests** (eight new tutorial cases) and **six native Swift lifecycle/API tests**. The tutorial tests cover completion without duplicate counting, chapter jumps without falsely completing skipped material, return to unreviewed steps, full replay, invalid stored state, workspace/role storage separation, and capability-aware feature destinations. No backend API or database schema changed.
+
+A separate sample-data browser instance exercised the first-visit Getting started invitation, starting the tour, all 28 steps through completion, interactive lesson responses, sample search, graph colors, pause/navigation/resume, reload persistence, chapter replay after completion, and full reset. The portable-reader view exercised keyboard activation and owner-only feature explanations without offering the restricted action. Browser consoles reported no warnings/errors. A full-page screenshot documents the final graph lesson. No private notes, connection credentials, backups, or sharing settings were used by the examples. Small-screen styles are included; a separate mobile-device visual pass and native-window visual pass are not claimed. Browser storage failure has an in-memory fallback; it is not claimed as an end-to-end browser privacy-mode test.
+
 ## History, cited answers, and documentation health (0.14.0)
 
 The full source suite passed **246 Python tests**; the final local-owner HTTP round-trip addition also passed in the expanded **18-test server suite** (247 Python tests in the final tree). All **62 JavaScript helper tests** and **6 native Swift tests** passed. New cases cover historical content retention, external Unicode edits, deletion recovery, custom properties, stale restore guards, corruption/symlink/traversal rejection, private history in complete recovery, citation/quote validation, unsupported claims without citations, explicit missing evidence, stale answers, local transport restrictions, source changes during generation, health criteria, review intervals, snooze invalidation, and saved-skill freshness. Local-owner-only GET/POST and active-workspace guards are exercised through HTTP.

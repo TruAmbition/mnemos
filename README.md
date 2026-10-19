@@ -4,7 +4,7 @@
 
 Start as one author with a team of readers. Add named author credentials when more engineers contribute. Markdown stays the source of truth, so the knowledge remains useful outside this application.
 
-On your first visit to the local portal, **Getting started** opens with an introduction, a first-task walkthrough, and copyable capture prompts. Later launches open the Library. This is remembered per browser profile and Mnemos address; clearing site data resets it. If browser storage is blocked, the guide may appear again on the next launch. Explicit page/document links keep their destination, and Getting started is always available in the sidebar.
+On your first visit to the local portal, **Getting started** opens with an introduction, a guided tutorial invitation, a first-task walkthrough, and copyable capture prompts. Later launches open the Library. This is remembered per browser profile and Mnemos address; clearing site data resets it. If browser storage is blocked, the guide may appear again on the next launch. Explicit page/document links keep their destination, and Getting started is always available in the sidebar.
 
 ## Included in this version
 
@@ -41,6 +41,10 @@ Mnemos works alongside your existing ChatGPT, Claude, or local agent. It stores 
 
 Use **Backups & settings → Git remote** to choose an empty local documentation repo or create one inside a selected parent folder. Optional automatic commits and pushes run every five minutes while Mnemos runs. The status light is **red** for no Git setup or an error, **amber** for local Git/pending changes, and **green** only after the latest documentation was pushed. Existing engineering checkouts are separate. Privacy controls apply to remote pushes, including history. See [configuration, safety, and recovery](docs/git-documentation-backup.md).
 
+## Guided tutorial (0.15.0)
+
+Open **Guided tutorial** in the sidebar or the macOS manager, or start from Getting started. Walk through 28 lessons in eight chapters, with the purpose, usage steps, limits, and clickable examples for every major feature. Jump to a chapter, pause and resume, or replay from the beginning. Progress is stored only in this browser for the current workspace and role; sample interactions never change your notes or settings. Readers can learn about owner features without gaining access to them. See [the tutorial guide](docs/guided-tutorial.md).
+
 ## Note history, cited answers, and documentation health (0.14.0)
 
 - **Note history** captures app saves and observed Obsidian edits. Compare earlier versions and restore as a new draft while keeping the current version recoverable.
@@ -59,13 +63,13 @@ Choose **Meaning + keywords** in Library or Find context after enabling an insta
 
 See the [session, search, and recovery guide](docs/workspace-tools.md) for setup, limits, and CLI automation.
 
-## Native macOS management (0.14.0)
+## Native macOS management (0.15.0)
 
-The current source adds a SwiftUI desktop manager for workspace setup, local service controls, backups, project refresh switches, and assistant connection status. It shares the HTML interface's configuration and vault. **Open Library** keeps the full documentation experience available in your browser. See [native macOS setup and build instructions](docs/native-macos.md). Download the 0.14.0 macOS package below for the native manager.
+The current source adds a SwiftUI desktop manager for workspace setup, local service controls, backups, project refresh switches, and assistant connection status. It shares the HTML interface's configuration and vault. **Open Library** keeps the full documentation experience available in your browser. See [native macOS setup and build instructions](docs/native-macos.md). Download the 0.15.0 macOS package below for the native manager.
 
 ## Recreate this version with ChatGPT
 
-Download the standalone [Mnemos 0.14.0 reconstruction prompt](prompts/rebuild-mnemos-v0.14.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with the SwiftUI macOS manager, first-visit onboarding, skill suggestion explanations, existing-skill matching, AI workflow handoffs, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
+Download the standalone [Mnemos 0.15.0 reconstruction prompt](prompts/rebuild-mnemos-v0.15.0.md) and attach the **entire file** to ChatGPT. It includes detailed setup/technical instructions, a Python recovery utility, and the verified application source snapshot with the SwiftUI macOS manager, first-visit onboarding, the replayable guided tutorial, skill suggestion explanations, existing-skill matching, AI workflow handoffs, automatic project refresh, and the midnight/violet/cyan identity. The embedded manifest identifies the exact commit and every included file. GitHub access and Git are not required to recover the source; Git is needed when using repository context.
 
 The file carries the application source itself. Attach it rather than pasting the encoded payload. A chat with file/code tools can recover exact source bytes; a cloud chat returns files for you to run locally, while an authorized workstation agent can perform local setup. Text-only chats can guide you through the recovery utility. Python 3.11+ is required for source recovery/execution. Desktop binaries may differ by platform/build environment.
 
@@ -73,7 +77,7 @@ The frozen archive excludes private notes, credentials, machine configuration, G
 
 ## Install and start
 
-Download **[Mnemos 0.14.0 for macOS (Apple Silicon)](https://github.com/TruAmbition/mnemos/releases/download/v0.14.0/Mnemos-0.14.0-macOS-arm64.dmg)**, or browse [all release downloads](https://github.com/TruAmbition/mnemos/releases/latest) for the app ZIP, source ZIP, reconstruction prompt, and checksums. The Mac package includes Python. This developer build is ad-hoc signed, not Apple Developer ID signed or notarized; follow your organization's application approval process. Intel Macs require a separate native build.
+Download **[Mnemos 0.15.0 for macOS (Apple Silicon)](https://github.com/TruAmbition/mnemos/releases/download/v0.15.0/Mnemos-0.15.0-macOS-arm64.dmg)**, or browse [all release downloads](https://github.com/TruAmbition/mnemos/releases/latest) for the app ZIP, source ZIP, reconstruction prompt, and checksums. The Mac package includes Python. This developer build is ad-hoc signed, not Apple Developer ID signed or notarized; follow your organization's application approval process. Intel Macs require a separate native build.
 
 
 **Desktop app:** open the Mnemos disk image, drag the app to Applications, and open it. Use the native manager for configuration and **Open Library** for documentation. Python is bundled. The current local build is for Apple Silicon Macs and is ad-hoc signed, not notarized. See [desktop installation and connection management](docs/desktop-and-connections.md) for platform support, upgrading, and build instructions.

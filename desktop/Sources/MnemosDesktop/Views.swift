@@ -138,7 +138,10 @@ struct ManagerView: View {
                     Button("Stop local service") { confirmStop = true }.disabled(model.busy || !model.ready || model.runtime?.managed != true)
                 }.padding(.top, 12)
             }.font(.callout)
-            Button("Getting started") { model.openWeb("/#getting-started") }.buttonStyle(.link)
+            HStack {
+                Button("Guided tutorial") { model.openWeb("/#tutorial") }.buttonStyle(.link)
+                Button("Getting started") { model.openWeb("/#getting-started") }.buttonStyle(.link)
+            }
         }
     }
     var stopped: some View {
