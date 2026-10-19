@@ -14,11 +14,14 @@ from .runtime import default_root
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Mnemos engineering knowledge toolkit")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("session-inbox", "workspace-backup", "semantic-search", "skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "knowledge-projects", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
+    for command in ("note-history", "library-answers", "documentation-health", "session-inbox", "workspace-backup", "semantic-search", "skill-analysis", "local-skills", "skill-candidates", "skill-build", "skill-export", "knowledge-projects", "projects", "connections", "init", "serve", "capture", "search", "get", "recall", "handoff", "skills-export", "token", "workflow-plan", "backup", "export", "build-reader"):
         sub = commands.add_parser(command)
         sub.add_argument("--data", help="Pin a data folder; omitted uses this installation's selected default")
-        if command in {'session-inbox', 'workspace-backup', 'semantic-search'}:
-            actions = {'session-inbox': ['list','create','read','handoff','review','accept','remove'],
+        if command in {'note-history', 'library-answers', 'documentation-health', 'session-inbox', 'workspace-backup', 'semantic-search'}:
+            actions = {'note-history': ['list', 'preview', 'restore'],
+                       'library-answers': ['list', 'create', 'read', 'handoff', 'accept', 'models', 'generate', 'save', 'remove'],
+                       'documentation-health': ['list', 'configure', 'snooze'],
+                       'session-inbox': ['list','create','read','handoff','review','accept','remove'],
                        'workspace-backup': ['create','preview','restore'],
                        'semantic-search': ['status','configure','rebuild','search']}[command]
             sub.add_argument('action', choices=actions)
@@ -83,7 +86,20 @@ def main(argv=None) -> int:
         uses_default = args.data is None
         if args.command != "skills-export":
             args.data = resolve_data(args.data)
-        if args.command in {'session-inbox','workspace-backup','semantic-search'}:
+        if args.command in {'note-history', 'library-answers', 'documentation-health'}:
+            from . import note_history, library_answers, documentation_health
+            payload = json.loads(Path(args.file).read_text('utf-8')) if args.file else {}
+            if args.command == 'note-history':
+                operations = {'list': lambda d,p: note_history.overview(d,p.get('id','')), 'preview': note_history.preview, 'restore': note_history.restore}
+            elif args.command == 'library-answers':
+                operations = {'list': lambda d,p: library_answers.overview(d), 'read': lambda d,p: library_answers.read(d,p.get('id')),
+                    'create': library_answers.create, 'handoff': library_answers.handoff, 'accept': library_answers.accept,
+                    'models': lambda d,p: library_answers.models(d), 'generate': library_answers.generate, 'save': library_answers.save_note, 'remove': library_answers.remove}
+            else:
+                operations = {'list': lambda d,p: documentation_health.overview(d,p.get('project_id','')),
+                    'configure': documentation_health.configure, 'snooze': documentation_health.snooze}
+            result = operations[args.action](args.data,payload)
+        elif args.command in {'session-inbox','workspace-backup','semantic-search'}:
             from . import session_inbox, workspace_backup, semantic
             payload = json.loads(Path(args.file).read_text('utf-8')) if args.file else {}
             if args.command == 'session-inbox':

@@ -14,7 +14,7 @@ from . import core, privacy
 
 FORMAT = 'mnemos-workspace-backup-v1'
 MANIFEST = 'mnemos-workspace.json'
-FOLDERS = ('vault', 'skill-builds', 'skill-analysis', 'skill-proposals', 'session-inbox')
+FOLDERS = ('vault', 'skill-builds', 'skill-analysis', 'skill-proposals', 'session-inbox', 'note-history', 'library-answers', 'health-state')
 LIMIT = 512 * 1024 * 1024
 EXCLUDED = {'Credentials and connection profiles', 'AI sharing approvals', 'Git history',
             'Personal Obsidian settings and plugins', 'Search index and model files',
@@ -31,7 +31,8 @@ def portable_config(config):
     return {'version': 1, 'owner': config['owner'], 'created': config.get('created', core.now()),
             'projects': [{k: p[k] for k in PROJECT_FIELDS if k in p} for p in projects],
             'skill_folders': config.get('skill_folders', []), 'assistant_mode': 'local', 'tokens': [],
-            'semantic_search': {'enabled': False, 'model': config.get('semantic_search', {}).get('model', 'embeddinggemma')}}
+            'semantic_search': {'enabled': False, 'model': config.get('semantic_search', {}).get('model', 'embeddinggemma')},
+            'documentation_health': config.get('documentation_health', {'review_days': 90})}
 
 
 def _allowed(name):

@@ -125,6 +125,11 @@ struct ManagerView: View {
                     Button("Browse skills") { model.openWeb("/#skills") }.disabled(!model.initialized)
                 }
             }.padding(.horizontal, 4)
+            HStack {
+                Button("Ask my library") { model.openWeb("/#ask") }.disabled(!model.initialized)
+                Button("Documentation health") { model.openWeb("/#health") }.disabled(!model.initialized)
+                Button("Note history") { model.openWeb("/#history") }.disabled(!model.initialized)
+            }.padding(.horizontal, 4)
             Divider()
             DisclosureGroup("Service & installation") {
                 VStack(alignment: .leading, spacing: 14) {

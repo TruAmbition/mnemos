@@ -63,7 +63,7 @@ class ServerTests(unittest.TestCase):
         return core.issue_token(self.data, role, role.title(), 'team')
 
     def test_workspace_tools_require_local_owner_and_bind_mutations(self):
-        paths = ['/api/session-inbox', '/api/workspace-backup', '/api/semantic']
+        paths = ['/api/session-inbox', '/api/workspace-backup', '/api/semantic', '/api/note-history/restore', '/api/library-answers', '/api/documentation-health/snooze']
         token = self.token('owner')
         for path in paths:
             status, _, _ = self.request('POST',path,{},headers={'Authorization':'Bearer '+token})
@@ -79,6 +79,23 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status,200)
         status, _, saved = self.request('POST','/api/session-inbox/accept',{'id':identifier,'index':0,'review_revision':reviewed['review_revision']})
         self.assertEqual(status,200);self.assertTrue(saved['document']['id'].startswith('session-'))
+
+    def test_private_library_tools_http_roundtrip_and_read_guards(self):
+        token = self.token('owner')
+        for path in ['/api/note-history', '/api/library-answers', '/api/library-answers/models', '/api/documentation-health']:
+            self.assertEqual(self.request(path=path, headers={'Authorization':'Bearer '+token})[0],403,path)
+        status, _, versions = self.request(path='/api/note-history?id=approved')
+        self.assertEqual(status,200); self.assertTrue(versions['versions'])
+        status, _, question = self.request('POST','/api/library-answers',{'question':'What instructions are approved?','source_ids':['approved']})
+        self.assertEqual(status,200)
+        status, _, handoff = self.request('POST','/api/library-answers/handoff',{'id':question['id']})
+        self.assertEqual(status,200);self.assertIn(question['id'],handoff['prompt'])
+        status, _, result = self.request(path='/api/documentation-health')
+        self.assertEqual(status,200);self.assertIn('counts',result)
+        status, _, checked = self.request('POST','/api/note-history/preview',{'id':'approved','revision':versions['versions'][0]['revision']})
+        self.assertEqual(status,200)
+        status, _, restored = self.request('POST','/api/note-history/restore',{'id':'approved','revision':checked['revision'],'review_revision':checked['review_revision']})
+        self.assertEqual(status,200);self.assertEqual(restored['document']['status'],'draft')
 
     def test_graph_respects_session_scope(self):
         result=self.request(path='/api/graph')

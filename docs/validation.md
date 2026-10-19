@@ -2,6 +2,14 @@
 
 Latest source validation: October 18, 2026, on macOS. Historical release checks below retain their original scope. This record distinguishes automated tests, live local checks, and integrations that still need environment-specific validation.
 
+## History, cited answers, and documentation health (0.14.0)
+
+The full source suite passed **246 Python tests**; the final local-owner HTTP round-trip addition also passed in the expanded **18-test server suite** (247 Python tests in the final tree). All **62 JavaScript helper tests** and **6 native Swift tests** passed. New cases cover historical content retention, external Unicode edits, deletion recovery, custom properties, stale restore guards, corruption/symlink/traversal rejection, private history in complete recovery, citation/quote validation, unsupported claims without citations, explicit missing evidence, stale answers, local transport restrictions, source changes during generation, health criteria, review intervals, snooze invalidation, and saved-skill freshness. Local-owner-only GET/POST and active-workspace guards are exercised through HTTP.
+
+An isolated browser workspace exercised question retrieval across synthetic notes, local model selection, a real cited answer using the already installed `qwen2.5-coder:7b`, persistent reopening, and saving a linked draft. An incomplete response from `llama3.2:latest` was rejected rather than presented as an answer. These are smoke checks, not model-quality benchmarks. No models were downloaded and no private user documentation was used. External ChatGPT/Claude account handoff was not executed; handoff/import validation is covered locally. The health page's filters, snooze and review-now controls were exercised. History selection and diffs were inspected; restore is validated through unit and HTTP round trips. The final browser restore confirmation was simplified after a native test-dialog automation limitation; no completed final mouse-driven restore is claimed here.
+
+The standalone Apple Silicon package passed all six Swift lifecycle tests against its bundled runtime, CLI/MCP forwarding, signature verification, and DMG integrity checks. Packaged web assets match final source. No separate native-window visual pass is claimed.
+
 ## Session inbox, local meaning search, and workspace recovery (0.13.0)
 
 On October 18, 2026, the source passed **232 Python tests, 62 JavaScript helper tests, and 6 native Swift tests**. New checks cover archive completeness, credential/approval exclusions, checksum corruption, unsafe paths, empty-target protection, reviewed repository remapping, disabled restoration automation, source-cited session proposals, update/combine behavior, repeated saves, stale revisions, duplicate suggestions, privacy guards, and local-owner/workspace-bound HTTP access.

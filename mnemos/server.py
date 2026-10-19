@@ -374,6 +374,30 @@ class Handler(BaseHTTPRequestHandler):
             return self._routes(method, parsed, path)
 
     def _routes(self, method, parsed, path):
+        if path.startswith(('/api/note-history', '/api/library-answers', '/api/documentation-health')):
+            self._require_local_setup()
+            from . import note_history, library_answers, documentation_health
+            data = self.server.data_path
+            params = parse_qs(parsed.query)
+            if method == 'GET':
+                if path == '/api/note-history':
+                    return self._json(note_history.overview(data, params.get('id', [''])[0]))
+                if path == '/api/documentation-health':
+                    return self._json(documentation_health.overview(data, params.get('project_id', [''])[0]))
+                if path == '/api/library-answers':
+                    return self._json(library_answers.overview(data))
+                if path == '/api/library-answers/models':
+                    return self._json(library_answers.models(data))
+                if path.startswith('/api/library-answers/'):
+                    return self._json(library_answers.read(data, path.rsplit('/', 1)[1]))
+            operations = {'/api/note-history/preview': note_history.preview, '/api/note-history/restore': note_history.restore,
+                '/api/library-answers': library_answers.create, '/api/library-answers/handoff': library_answers.handoff,
+                '/api/library-answers/accept': library_answers.accept, '/api/library-answers/generate': library_answers.generate,
+                '/api/library-answers/save': library_answers.save_note, '/api/library-answers/remove': library_answers.remove,
+                '/api/documentation-health/configure': documentation_health.configure, '/api/documentation-health/snooze': documentation_health.snooze}
+            if method == 'POST' and path in operations:
+                return self._json(operations[path](data, self._body()))
+            raise core.MnemosError('Unsupported local library operation.', 405)
         if path.startswith(('/api/workspace-backup', '/api/session-inbox', '/api/semantic')):
             self._require_local_setup()
             data = self.server.data_path

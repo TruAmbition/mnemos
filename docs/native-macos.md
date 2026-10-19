@@ -58,3 +58,5 @@ The build is ad-hoc signed and not Apple notarized. Signing, enterprise deployme
 The Projects screen groups repositories under their top-level systems and opens project-scoped Library search. Repository refresh switches remain available. Use the browser project editor for membership, declared relationships, explanation handoffs, and Obsidian Canvas generation.
 
 The Overview panel also has **Summarize my session**, opening the same durable session inbox used by the web Library. The native app and website share all saved settings and notes.
+
+The 0.14.0 manager provides shortcuts to **Ask my library**, **Documentation health**, and **Note history**. These open the full browser tools against the same active workspace. Optional local generation needs a separately installed Ollama text model; the standalone app itself needs no Python installation.

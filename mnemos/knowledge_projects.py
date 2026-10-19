@@ -213,11 +213,14 @@ def detail(data, identifier):
             'documents': [{k: d.get(k) for k in ('id', 'title', 'type', 'status', 'revision')} for d in docs]}
 
 
-def freshness(data, doc):
+def freshness(data, doc, *, snapshot=None):
     """Compare cited source revisions, not semantic correctness or live remote code."""
-    indexed = {d['id']: d for d in core.list_documents(data)}
-    groups = {p['id']: p for p in entries(data)}
-    repositories = {p['id']: p for p in core.load_config(data).get('projects', [])}
+    if snapshot is None:
+        indexed = {d['id']: d for d in core.list_documents(data)}
+        groups = {p['id']: p for p in entries(data)}
+        repositories = {p['id']: p for p in core.load_config(data).get('projects', [])}
+    else:
+        indexed, groups, repositories = snapshot
     changed = []
     if 'project-context' in doc.get('tags', []):
         for rid in document_repositories(doc, []):
@@ -230,7 +233,7 @@ def freshness(data, doc):
         key, expected = ref.rsplit('@', 1)
         if key.startswith('mnemos:'):
             source = indexed.get(key[7:])
-            if not source or source['revision'] != expected:
+            if not source or source['status'] == 'archived' or source['revision'] != expected:
                 changed.append(key[7:]); continue
             for rid in document_repositories(source, []):
                 last = repositories.get(rid, {}).get('last_refresh', {})

@@ -217,7 +217,7 @@ def parse_markdown(text: str) -> tuple[dict, str]:
     return metadata, "\n".join(lines[end + 1:]).lstrip("\n")
 
 
-def _read_document(path: Path, vault: Path) -> dict:
+def _read_document(path: Path, vault: Path, history_data=None) -> dict:
     raw = path.read_bytes()
     if len(raw) > 1_000_000:
         raise MnemosError(f"Document is too large: {path.name}")
@@ -225,6 +225,9 @@ def _read_document(path: Path, vault: Path) -> dict:
     document_id = str(meta.get("id", path.stem))
     if not ID_RE.fullmatch(document_id):
         raise MnemosError(f"Invalid document id in {path.name}.")
+    if history_data is not None:
+        from .note_history import checkpoint
+        checkpoint(history_data, document_id, path.relative_to(vault).as_posix(), raw)
     tags = meta.get("tags", [])
     if isinstance(tags, str):
         tags = [item.strip() for item in tags.split(",") if item.strip()]
@@ -259,7 +262,8 @@ def list_documents(data_path: str | Path, role: str = "owner", query: str = "") 
         safe_path(vault, path.relative_to(vault))
         if any(part.startswith(".") for part in path.relative_to(vault).parts) or path.relative_to(vault).parts[0] == "Templates":
             continue
-        document = _read_document(path, vault)
+        from .privacy import AUDIENCE
+        document = _read_document(path, vault, data_path if role == 'owner' and AUDIENCE.get() == 'local' else None)
         if document["id"] in seen:
             raise MnemosError(f"Duplicate document id: {document['id']}")
         seen.add(document["id"])
@@ -310,7 +314,7 @@ def _related_links(body: str, related_ids: list[str], documents: list[dict], doc
     return body
 
 
-def save_document(data_path: str | Path, payload: dict, role: str = "owner", author: str | None = None) -> dict:
+def save_document(data_path: str | Path, payload: dict, role: str = "owner", author: str | None = None, *, extra_metadata=None) -> dict:
     if role not in {"owner", "author"}:
         raise MnemosError("Only authors can change documents.", 403)
     if not isinstance(payload, dict):
@@ -385,8 +389,14 @@ def save_document(data_path: str | Path, payload: dict, role: str = "owner", aut
         body = _related_links(body, metadata["related_ids"], documents, document_id)
         relative = existing["path"] if existing else f"{TYPES[kind]}/{document_id}.md"
         path = safe_path(vault, relative)
+        if extra_metadata:
+            metadata = {**extra_metadata, **metadata}
         text = "---\n" + "\n".join(f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items()) + "\n---\n\n" + body.rstrip() + "\n"
+        from .note_history import checkpoint
+        if existing:
+            checkpoint(data_path, document_id, relative, path.read_bytes(), 'before-save')
         atomic_write(path, text)
+        checkpoint(data_path, document_id, relative, text.encode('utf-8'), 'app-save')
         if target != 'local':
             return {'id': document_id, 'status': status, 'saved': True, 'notice': 'Saved locally. Review privacy and approve the note locally before assistant recall or sharing.'}
         return _read_document(path, vault)

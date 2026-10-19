@@ -268,3 +268,29 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 #workspace-tool-root .code-editor{width:100%;box-sizing:border-box}
 #workspace-backup-result code{overflow-wrap:anywhere}
 @media(max-width:900px){.session-layout{grid-template-columns:1fr}.workspace-shortcuts{flex-direction:column}}
+/* Library maintenance stays behind focused pages, away from the reader. */
+.answer-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
+.answer-layout>div,.answer-layout>aside{min-width:0}
+.answer-layout>aside{max-height:75vh;overflow:auto}
+.answer-layout .session-sources{max-height:240px;overflow:auto;margin:12px 0}
+.answer-layout .session-sources label{display:flex;gap:10px;padding:9px 0;align-items:start}
+.answer-source{margin:12px 0;border-bottom:1px solid var(--line);padding:10px 0}
+.answer-source summary{cursor:pointer;font-weight:600;line-height:1.6}
+.answer-source pre,.history-diff{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;padding:16px;font-size:12px;line-height:1.7;background:var(--paper);border-radius:10px}
+.answer-output{margin-top:28px;padding-top:24px;border-top:1px solid var(--line)}
+.answer-claim{padding:14px 0;border-bottom:1px solid var(--line)}
+.answer-claim>p{font-size:16px;line-height:1.8}
+.answer-claim blockquote{border-left:3px solid #8274ed;padding:10px 16px;margin:12px 0;color:var(--muted);white-space:pre-wrap}
+.answer-gaps{margin:22px 0;padding:16px 20px;background:rgba(126,106,220,.07);border-radius:12px}
+.history-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;align-items:start}
+#history-versions{max-height:65vh;overflow:auto}
+#history-preview{min-width:0}
+#history-preview .button{margin-top:18px}
+.health-counts{display:flex;gap:14px;flex-wrap:wrap;padding:12px 0 24px;align-items:baseline}
+.health-counts span{font-size:12px;color:var(--muted)}
+.health-item{display:flex;align-items:start;justify-content:space-between;gap:24px;padding:24px 0;border-top:1px solid var(--line)}
+.health-item h2{font-size:18px;margin:12px 0 8px}
+.health-item p{line-height:1.7;max-width:72ch}
+.health-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;min-width:160px}
+.health-urgent{background:rgba(218,139,51,.13);color:#a56216}
+@media(max-width:1000px){.answer-layout{grid-template-columns:1fr}.answer-layout>aside{max-height:300px}.health-item{display:block}.health-actions{justify-content:flex-start}.history-layout{grid-template-columns:1fr}#history-versions{max-height:240px}}

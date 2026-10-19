@@ -18,7 +18,7 @@ Assistant skills ── local MCP or CLI ──► Dedicated Markdown vault
 
 Markdown files are the durable source of truth. The application reads them directly; there is no separate database that must be synchronized to make a saved document searchable. Templates are excluded from search. Workflow JSON references stable document IDs rather than depending on a human-readable title remaining unchanged.
 
-The assistant and application have separate jobs. An assistant interprets accessible work, drafts useful knowledge, and reasons about plans. Mnemos validates structured captures, saves documents, retrieves matching sources, and produces dependency plans. The application does not contain a model inference engine.
+The assistant and application have separate jobs. An assistant interprets accessible work, drafts useful knowledge, and reasons about plans. Mnemos validates structured captures, saves documents, retrieves matching sources, and produces dependency plans. The application does not bundle a model inference engine. Ask my library can call an explicitly selected local Ollama text model, or prepare a reviewed handoff for an existing assistant. Both answer paths validate source IDs and supporting quotes; neither executes actions.
 
 ## Distribution and private state
 
@@ -33,6 +33,10 @@ private-data/
   skill-builds/        Immutable generated skill snapshots (private, outside the vault)
   skill-analysis/      Explicit source handoffs for external AI reasoning
   skill-proposals/     Reviewed, accepted workflow decompositions
+  session-inbox/       Collected session evidence and reviewed proposals
+  note-history/        Immutable private note checkpoints
+  library-answers/     Questions, selected excerpts, and cited answers
+  health-state/        Evidence-bound review snoozes
 ```
 
 The vault is always `vault/` under the selected data directory. Initialization refuses to adopt a nonempty unconfigured vault and does not merge with another Obsidian library. Opening the dedicated folder in Obsidian keeps its vault configuration separate. Choosing a data directory outside existing vaults is part of setup.
@@ -130,3 +134,7 @@ Ordinary recall and bounded handoff prefer the registered latest snapshot. Libra
 `semantic.py` optionally connects directly to `127.0.0.1:11434` through Python's HTTP client, without proxies or redirect following. Three supported local embedding model names are allowlisted. Model identity/digest and note revisions invalidate cached vectors. Passages overlap by 200 characters, use 2,400-character windows, and rank by cosine similarity with a small keyword boost. Recall includes the matched passage. Search applies current local-owner/project/type/archive scope and prefers latest repository snapshots. The index contains vectors and IDs, stays outside the vault, and is omitted from backups; turning the feature off removes it. Search refreshes changed passages synchronously and can be slower on large libraries. No hosted inference or automatic model download is provided.
 
 `workspace_backup.py` adds a distinct local archive format, `mnemos-workspace-backup-v1`. An allowlist covers the vault, skill builds, analysis requests/proposals, inbox, and sanitized portable configuration. SHA-256 checks cover every entry; restore rejects traversal, duplicate/uncovered entries, symlinks, over-limit archives, and nonempty destinations. Recovery stages into a sibling directory and leaves the resulting workspace inactive. Repo identities persist; paths can be remapped. Credentials, connection profiles, sharing approvals, local indexes, Git history, external checkouts, and personal Obsidian settings do not restore. Automatic refresh, pushing, semantic search and assistant mode reset to inactive/local. Current limits are 512 MB and 20,000 files. Full workspace recovery is intentionally local; existing privacy-governed vault/cloud and Git exports remain separate.
+
+## Library maintenance (0.14.0)
+
+[History, grounded answers, and health review](library-tools.md) share the existing vault and privacy boundaries. Owner library reads checkpoint observed external revisions; all app writes retain old and new versions. Restore is guarded by a preview revision and returns a note to draft. Answers are generated from bounded, explicitly reviewable excerpts and retain provenance. The health queue uses reproducible checks against captured evidence rather than an inference service. These records are outside the vault and included in complete workspace recovery only.
